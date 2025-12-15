@@ -29,7 +29,7 @@ export function useGaugeProfiles(gaugeAddresses: Address[]) {
     }
 
     const profileMap = new Map<string, GaugeProfile>()
-    for (const profile of data ?? []) {
+    for (const profile of (data as unknown as GaugeProfile[]) ?? []) {
       profileMap.set(profile.gauge_address.toLowerCase(), profile)
     }
     setProfiles(profileMap)
@@ -71,7 +71,7 @@ export function useGaugeProfile(gaugeAddress: Address | undefined) {
       return
     }
 
-    setProfile(data)
+    setProfile(data as unknown as GaugeProfile | null)
     setIsLoading(false)
   }, [gaugeAddress])
 
@@ -137,7 +137,7 @@ export function useUpsertGaugeProfile() {
       }
 
       setIsLoading(false)
-      return data as GaugeProfile
+      return data as unknown as GaugeProfile
     },
     [],
   )
