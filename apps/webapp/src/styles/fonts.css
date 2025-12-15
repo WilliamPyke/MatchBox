@@ -1,0 +1,47 @@
+@font-face {
+  font-family: "RiformaLLWeb-Light";
+  src: url("/fonts/riforma/RiformaLLWeb-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RiformaLLWeb-Regular";
+  src: url("/fonts/riforma/RiformaLLWeb-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RiformaLLWeb-Medium";
+  src: url("/fonts/riforma/RiformaLLWeb-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RiformaLLWeb-Bold";
+  src: url("/fonts/riforma/RiformaLLWeb-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RiformaLLWeb-Heavy";
+  src: url("/fonts/riforma/RiformaLLWeb-Heavy.woff2") format("woff2");
+  font-weight: 900;
+  font-display: swap;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "RiformaMonoLLWeb-Regular";
+  src: url("/fonts/riforma/RiformaMonoLLWeb-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  font-style: normal;
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@repo/webapp",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/",
+    "typecheck": "tsc --noEmit",
+    "cloudflare:build": "opennextjs-cloudflare build",
+    "cloudflare:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cloudflare:upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload"
+  },
+  "dependencies": {
+    "@mezo-org/mezo-clay": "^0.1.0-dev.37",
+    "@opennextjs/cloudflare": "^1.13.1",
+    "@repo/shared": "workspace:*",
+    "@tanstack/react-query": "^5.62.2",
+    "@thesis-co/cent": "^0.0.5",
+    "baseui": "0.0.0-next-18f01efe0",
+    "next": "^14.2.18",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "styletron-engine-monolithic": "^1.0.0",
+    "styletron-react": "^6.1.1",
+    "viem": "^2.21.45",
+    "wagmi": "^2.13.3",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@repo/biome-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@types/node": "^22.10.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "wrangler": "^4.51.0"
+  }
+}
