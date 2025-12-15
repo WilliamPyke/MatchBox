@@ -2,13 +2,7 @@ import { AddressLink } from "@/components/AddressLink"
 import { Layout } from "@/components/Layout"
 import type { BoostGauge } from "@/hooks/useGauges"
 import { useBoostGauges } from "@/hooks/useGauges"
-import {
-  LOCK_DURATION_OPTIONS,
-  useApproveMEZO,
-  useCreateVeMEZOLock,
-  useMEZOBalance,
-  useVeMEZOLocks,
-} from "@/hooks/useLocks"
+import { useVeMEZOLocks } from "@/hooks/useLocks"
 import {
   useBribeAddress,
   useBribeIncentives,
@@ -36,8 +30,8 @@ import {
   useStyletron,
 } from "@mezo-org/mezo-clay"
 import type React from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { formatUnits, parseUnits } from "viem"
+import { useCallback, useMemo, useState } from "react"
+import { formatUnits } from "viem"
 import { useAccount } from "wagmi"
 
 type GaugeSortColumn =
@@ -58,81 +52,8 @@ type GaugeWithAllocation = BoostGauge & {
 export default function BoostPage() {
   const [css, theme] = useStyletron()
   const { isConnected } = useAccount()
-  const {
-    locks: veMEZOLocks,
-    isLoading: isLoadingLocks,
-    refetch: refetchLocks,
-  } = useVeMEZOLocks()
+  const { locks: veMEZOLocks, isLoading: isLoadingLocks } = useVeMEZOLocks()
   const { gauges, isLoading: isLoadingGauges } = useBoostGauges()
-
-  // Lock creation state
-  const [lockAmount, setLockAmount] = useState("")
-  const [selectedDurationIndex, setSelectedDurationIndex] = useState<
-    number | undefined
-  >()
-  const {
-    balance: mezoBalance,
-    allowance,
-    refetch: refetchBalance,
-  } = useMEZOBalance()
-  const {
-    approve,
-    isPending: isApproving,
-    isConfirming: isConfirmingApproval,
-    isSuccess: isApprovalSuccess,
-    reset: resetApprovalState,
-  } = useApproveMEZO()
-  const {
-    createLock,
-    isPending: isCreatingLock,
-    isConfirming: isConfirmingLock,
-    isSuccess: isLockSuccess,
-    reset: resetLockState,
-  } = useCreateVeMEZOLock()
-
-  // Refetch after successful approval
-  useEffect(() => {
-    if (isApprovalSuccess) {
-      // Refetch balance to get new allowance, then reset approval state
-      refetchBalance().then(() => {
-        // Small delay to ensure React has processed the state update
-        setTimeout(() => {
-          resetApprovalState()
-        }, 100)
-      })
-    }
-  }, [isApprovalSuccess, refetchBalance, resetApprovalState])
-
-  // Refetch after successful lock creation
-  useEffect(() => {
-    if (isLockSuccess) {
-      // Refetch both locks and balance, then reset state
-      Promise.all([refetchLocks(), refetchBalance()]).then(() => {
-        setLockAmount("")
-        setSelectedDurationIndex(undefined)
-        resetLockState()
-      })
-    }
-  }, [isLockSuccess, refetchLocks, refetchBalance, resetLockState])
-
-  const parsedLockAmount = lockAmount ? parseUnits(lockAmount, 18) : 0n
-  const needsApproval = allowance !== undefined && parsedLockAmount > allowance
-  const selectedDuration =
-    selectedDurationIndex !== undefined
-      ? LOCK_DURATION_OPTIONS[selectedDurationIndex]
-      : undefined
-
-  const handleApprove = () => {
-    if (parsedLockAmount > 0n) {
-      approve(parsedLockAmount)
-    }
-  }
-
-  const handleCreateLock = () => {
-    if (parsedLockAmount > 0n && selectedDuration) {
-      createLock(parsedLockAmount, selectedDuration.value)
-    }
-  }
 
   // Voting state
   const [selectedLockIndex, setSelectedLockIndex] = useState<
@@ -815,134 +736,8 @@ export default function BoostPage() {
               </Card>
             )}
 
-            {/* Lock Creation Form - shown when user has MEZO balance */}
-            {mezoBalance !== undefined && mezoBalance > 0n && (
-              <Card title="Create veMEZO Lock" withBorder overrides={{}}>
-                <div className={css({ padding: "16px 0" })}>
-                  <ParagraphMedium
-                    color={theme.colors.contentSecondary}
-                    marginBottom="scale500"
-                  >
-                    Lock MEZO tokens to get veMEZO voting power and vote on
-                    gauges.
-                  </ParagraphMedium>
-
-                  <div
-                    className={css({
-                      marginBottom: "16px",
-                      padding: "12px",
-                      backgroundColor: theme.colors.backgroundSecondary,
-                      borderRadius: "8px",
-                    })}
-                  >
-                    <LabelSmall color={theme.colors.contentSecondary}>
-                      Available MEZO Balance
-                    </LabelSmall>
-                    <LabelMedium>
-                      {formatUnits(mezoBalance, 18)} MEZO
-                    </LabelMedium>
-                  </div>
-
-                  <div
-                    className={css({
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "16px",
-                    })}
-                  >
-                    <div>
-                      <LabelSmall
-                        color={theme.colors.contentSecondary}
-                        marginBottom="scale200"
-                      >
-                        Amount to Lock
-                      </LabelSmall>
-                      <Input
-                        value={lockAmount}
-                        onChange={(e) => setLockAmount(e.target.value)}
-                        placeholder="0.0"
-                        type="number"
-                        endEnhancer={
-                          <Button
-                            kind="tertiary"
-                            size="xsmall"
-                            onClick={() =>
-                              mezoBalance &&
-                              setLockAmount(formatUnits(mezoBalance, 18))
-                            }
-                          >
-                            MAX
-                          </Button>
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <LabelSmall
-                        color={theme.colors.contentSecondary}
-                        marginBottom="scale200"
-                      >
-                        Lock Duration
-                      </LabelSmall>
-                      <Select
-                        options={LOCK_DURATION_OPTIONS.map((opt, i) => ({
-                          label: opt.label,
-                          id: i.toString(),
-                        }))}
-                        value={
-                          selectedDurationIndex !== undefined
-                            ? [{ id: selectedDurationIndex.toString() }]
-                            : []
-                        }
-                        onChange={(params) => {
-                          const selected = params.value[0]
-                          setSelectedDurationIndex(
-                            selected ? Number(selected.id) : undefined,
-                          )
-                        }}
-                        placeholder="Select lock duration"
-                      />
-                    </div>
-
-                    <div
-                      className={css({
-                        display: "flex",
-                        gap: "12px",
-                        marginTop: "8px",
-                      })}
-                    >
-                      {needsApproval ? (
-                        <Button
-                          kind="primary"
-                          onClick={handleApprove}
-                          isLoading={isApproving || isConfirmingApproval}
-                          disabled={!lockAmount || parsedLockAmount === 0n}
-                        >
-                          Approve MEZO
-                        </Button>
-                      ) : (
-                        <Button
-                          kind="primary"
-                          onClick={handleCreateLock}
-                          isLoading={isCreatingLock || isConfirmingLock}
-                          disabled={
-                            !lockAmount ||
-                            parsedLockAmount === 0n ||
-                            !selectedDuration
-                          }
-                        >
-                          Create Lock
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {/* Empty state when no MEZO and no locks */}
-            {(mezoBalance === undefined || mezoBalance === 0n) &&
-              veMEZOLocks.length === 0 && (
+            {/* Empty state when no locks */}
+            {veMEZOLocks.length === 0 && (
                 <Card withBorder overrides={{}}>
                   <div
                     className={css({

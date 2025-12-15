@@ -2,6 +2,7 @@ import { AddressLink } from "@/components/AddressLink"
 import { Layout } from "@/components/Layout"
 import { useBoostGauges, useVoterTotals } from "@/hooks/useGauges"
 import type { BoostGauge } from "@/hooks/useGauges"
+import { useBribeAddress, useBribeIncentives } from "@/hooks/useVoting"
 import { formatFixedPoint, formatMultiplier } from "@/utils/format"
 import {
   Card,
@@ -29,6 +30,46 @@ type SortColumn =
   | null
 type SortDirection = "asc" | "desc"
 type StatusFilter = "all" | "active" | "inactive"
+
+const GaugeBribesCell = ({ gaugeAddress }: { gaugeAddress: `0x${string}` }) => {
+  const [css, theme] = useStyletron()
+  const {
+    bribeAddress,
+    hasBribe,
+    isLoading: isLoadingBribe,
+  } = useBribeAddress(gaugeAddress)
+  const { incentives, isLoading: isLoadingIncentives } =
+    useBribeIncentives(bribeAddress)
+
+  if (isLoadingBribe || isLoadingIncentives) {
+    return (
+      <LabelSmall color={theme.colors.contentSecondary}>Loading...</LabelSmall>
+    )
+  }
+
+  if (!hasBribe || incentives.length === 0) {
+    return (
+      <LabelSmall color={theme.colors.contentSecondary}>No bribes</LabelSmall>
+    )
+  }
+
+  return (
+    <div
+      className={css({
+        display: "flex",
+        flexDirection: "column",
+        gap: "4px",
+      })}
+    >
+      {incentives.map((incentive) => (
+        <LabelSmall key={incentive.tokenAddress}>
+          {formatFixedPoint(incentive.amount, BigInt(incentive.decimals))}{" "}
+          {incentive.symbol}
+        </LabelSmall>
+      ))}
+    </div>
+  )
+}
 
 export default function GaugesPage() {
   const [css, theme] = useStyletron()
@@ -240,41 +281,43 @@ export default function GaugesPage() {
             </div>
           </Card>
         ) : (
-          <>
-            <div
-              className={css({
-                display: "flex",
-                gap: "8px",
-                alignItems: "center",
-              })}
-            >
-              <LabelSmall color={theme.colors.contentSecondary}>
-                Filter by status:
-              </LabelSmall>
-              <Tag
-                closeable={false}
-                onClick={() => setStatusFilter("all")}
-                color={statusFilter === "all" ? "blue" : "gray"}
+          <Card title="Gauges" withBorder overrides={{}}>
+            <div className={css({ padding: "16px 0" })}>
+              <div
+                className={css({
+                  display: "flex",
+                  gap: "8px",
+                  alignItems: "center",
+                  marginBottom: "16px",
+                })}
               >
-                All
-              </Tag>
-              <Tag
-                closeable={false}
-                onClick={() => setStatusFilter("active")}
-                color={statusFilter === "active" ? "green" : "gray"}
-              >
-                Active
-              </Tag>
-              <Tag
-                closeable={false}
-                onClick={() => setStatusFilter("inactive")}
-                color={statusFilter === "inactive" ? "red" : "gray"}
-              >
-                Inactive
-              </Tag>
-            </div>
+                <LabelSmall color={theme.colors.contentSecondary}>
+                  Filter by status:
+                </LabelSmall>
+                <Tag
+                  closeable={false}
+                  onClick={() => setStatusFilter("all")}
+                  color={statusFilter === "all" ? "blue" : "gray"}
+                >
+                  All
+                </Tag>
+                <Tag
+                  closeable={false}
+                  onClick={() => setStatusFilter("active")}
+                  color={statusFilter === "active" ? "green" : "gray"}
+                >
+                  Active
+                </Tag>
+                <Tag
+                  closeable={false}
+                  onClick={() => setStatusFilter("inactive")}
+                  color={statusFilter === "inactive" ? "red" : "gray"}
+                >
+                  Inactive
+                </Tag>
+              </div>
 
-            <TableBuilder
+              <TableBuilder
               data={filteredAndSortedGauges}
               overrides={{
                 Root: {
@@ -334,6 +377,11 @@ export default function GaugesPage() {
               >
                 {(gauge: BoostGauge) => formatMultiplier(gauge.boostMultiplier)}
               </TableBuilderColumn>
+              <TableBuilderColumn header="Bribes">
+                {(gauge: BoostGauge) => (
+                  <GaugeBribesCell gaugeAddress={gauge.address} />
+                )}
+              </TableBuilderColumn>
               <TableBuilderColumn
                 header={
                   <SortableHeader column="optimalVeMEZO">
@@ -357,8 +405,9 @@ export default function GaugesPage() {
                   </Tag>
                 )}
               </TableBuilderColumn>
-            </TableBuilder>
-          </>
+              </TableBuilder>
+            </div>
+          </Card>
         )}
       </div>
     </Layout>
