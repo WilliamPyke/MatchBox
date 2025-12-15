@@ -353,6 +353,13 @@ export default function GaugesPage() {
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
             gap: "16px",
+            "@media (max-width: 1024px)": {
+              gridTemplateColumns: "repeat(2, 1fr)",
+            },
+            "@media (max-width: 480px)": {
+              gridTemplateColumns: "1fr",
+              gap: "12px",
+            },
           })}
         >
           <SpringIn delay={0} variant="card">
@@ -450,6 +457,7 @@ export default function GaugesPage() {
                   gap: "8px",
                   alignItems: "center",
                   marginBottom: "16px",
+                  flexWrap: "wrap",
                 })}
               >
                 <LabelSmall color={theme.colors.contentSecondary}>
@@ -478,6 +486,18 @@ export default function GaugesPage() {
                 </Tag>
               </div>
 
+              <div
+                className={css({
+                  overflowX: "auto",
+                  WebkitOverflowScrolling: "touch",
+                  margin: "0 -16px",
+                  padding: "0 16px",
+                  "@media (max-width: 768px)": {
+                    margin: "0 -12px",
+                    padding: "0 12px",
+                  },
+                })}
+              >
               <TableBuilder
               data={filteredAndSortedGauges}
               overrides={{
@@ -485,16 +505,23 @@ export default function GaugesPage() {
                   style: {
                     maxHeight: "600px",
                     overflow: "auto",
+                    minWidth: "700px",
                   },
                 },
                 TableHeadCell: {
                   style: {
                     backgroundColor: theme.colors.backgroundSecondary,
+                    whiteSpace: "nowrap",
                   },
                 },
                 TableBodyRow: {
                   style: {
                     backgroundColor: theme.colors.backgroundPrimary,
+                  },
+                },
+                TableBodyCell: {
+                  style: {
+                    whiteSpace: "nowrap",
                   },
                 },
               }}
@@ -571,6 +598,7 @@ export default function GaugesPage() {
                 )}
               </TableBuilderColumn>
               </TableBuilder>
+              </div>
             </div>
           </Card>
           </SpringIn>

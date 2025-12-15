@@ -53,6 +53,9 @@ function VeBTCLockCard({
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
             gap: "16px",
+            "@media (max-width: 480px)": {
+              gap: "12px",
+            },
           })}
         >
           <div>
@@ -281,6 +284,13 @@ export default function DashboardPage() {
                 display: "grid",
                 gridTemplateColumns: "repeat(4, 1fr)",
                 gap: "16px",
+                "@media (max-width: 1024px)": {
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                },
+                "@media (max-width: 480px)": {
+                  gridTemplateColumns: "1fr",
+                  gap: "12px",
+                },
               })}
             >
               <SpringIn delay={0} variant="card">
@@ -357,6 +367,10 @@ export default function DashboardPage() {
                       gridTemplateColumns:
                         "repeat(auto-fill, minmax(350px, 1fr))",
                       gap: "16px",
+                      "@media (max-width: 480px)": {
+                        gridTemplateColumns: "1fr",
+                        gap: "12px",
+                      },
                     })}
                   >
                     {veBTCLocks.map((lock, index) => (
@@ -394,6 +408,10 @@ export default function DashboardPage() {
                       gridTemplateColumns:
                         "repeat(auto-fill, minmax(350px, 1fr))",
                       gap: "16px",
+                      "@media (max-width: 480px)": {
+                        gridTemplateColumns: "1fr",
+                        gap: "12px",
+                      },
                     })}
                   >
                     {veMEZOLocks.map((lock, index) => (

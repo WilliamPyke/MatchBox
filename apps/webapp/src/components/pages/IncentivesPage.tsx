@@ -247,6 +247,13 @@ export default function IncentivesPage() {
                         display: "grid",
                         gridTemplateColumns: "repeat(4, 1fr)",
                         gap: "16px",
+                        "@media (max-width: 1024px)": {
+                          gridTemplateColumns: "repeat(2, 1fr)",
+                        },
+                        "@media (max-width: 480px)": {
+                          gridTemplateColumns: "1fr",
+                          gap: "12px",
+                        },
                       })}
                     >
                       <div>

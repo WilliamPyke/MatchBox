@@ -22,6 +22,12 @@ export function Layout({ children }: LayoutProps) {
           maxWidth: "1200px",
           margin: "0 auto",
           padding: "24px",
+          "@media (max-width: 768px)": {
+            padding: "16px",
+          },
+          "@media (max-width: 480px)": {
+            padding: "12px",
+          },
         })}
       >
         {children}
