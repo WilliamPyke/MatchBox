@@ -2,6 +2,7 @@ import { Button, LabelMedium, useStyletron } from "@mezo-org/mezo-clay"
 import { useTheme } from "@/contexts/ThemeContext"
 import NextLink from "next/link"
 import { useRouter } from "next/router"
+import { useState, useEffect } from "react"
 import { useAccount, useConnect, useDisconnect } from "wagmi"
 import { injected } from "wagmi/connectors"
 
@@ -47,6 +48,43 @@ function MoonIcon({ color }: { color: string }) {
   )
 }
 
+function MenuIcon({ color }: { color: string }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <line x1="3" y1="18" x2="21" y2="18" />
+    </svg>
+  )
+}
+
+function CloseIcon({ color }: { color: string }) {
+  return (
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <line x1="18" y1="6" x2="6" y2="18" />
+      <line x1="6" y1="6" x2="18" y2="18" />
+    </svg>
+  )
+}
+
 export function Header() {
   const [css, theme] = useStyletron()
   const router = useRouter()
@@ -54,6 +92,24 @@ export function Header() {
   const { connect } = useConnect()
   const { disconnect } = useDisconnect()
   const { theme: currentTheme, toggleTheme } = useTheme()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [router.pathname])
+
+  // Prevent body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
+    return () => {
+      document.body.style.overflow = ""
+    }
+  }, [mobileMenuOpen])
 
   const handleConnect = () => {
     connect({ connector: injected() })
@@ -67,120 +123,310 @@ export function Header() {
   ]
 
   return (
-    <header
-      className={css({
-        display: "grid",
-        gridTemplateColumns: "1fr auto 1fr",
-        alignItems: "center",
-        padding: "16px 24px",
-        borderBottom: `1px solid ${theme.colors.borderOpaque}`,
-        backgroundColor: theme.colors.backgroundPrimary,
-      })}
-    >
-      <div
+    <>
+      <header
         className={css({
-          display: "flex",
+          display: "grid",
+          gridTemplateColumns: "1fr auto 1fr",
           alignItems: "center",
+          padding: "16px 24px",
+          borderBottom: `1px solid ${theme.colors.borderOpaque}`,
+          backgroundColor: theme.colors.backgroundPrimary,
+          position: "relative",
+          zIndex: 100,
+          "@media (max-width: 768px)": {
+            gridTemplateColumns: "auto 1fr auto",
+            padding: "12px 16px",
+          },
         })}
       >
-        <NextLink href="/" style={{ textDecoration: "none" }}>
-          <div
-            className={css({
-              display: "flex",
-              alignItems: "center",
-              height: "40px",
-            })}
-          >
-            <img
-              src="/matchbox.png"
-              alt="Matchbox"
+        {/* Logo */}
+        <div
+          className={css({
+            display: "flex",
+            alignItems: "center",
+          })}
+        >
+          <NextLink href="/" style={{ textDecoration: "none" }}>
+            <div
               className={css({
-                height: "100%",
-                width: "auto",
-                imageRendering: "crisp-edges",
-                filter: currentTheme === "dark" ? "invert(1)" : "none",
-              })}
-            />
-          </div>
-        </NextLink>
-      </div>
-      <nav
-        className={css({
-          display: "flex",
-          gap: "24px",
-          justifyContent: "center",
-        })}
-      >
-        {navItems.map((item) => (
-          <NextLink
-            key={item.href}
-            href={item.href}
-            style={{ textDecoration: "none" }}
-          >
-            <LabelMedium
-              color={
-                router.pathname === item.href
-                  ? theme.colors.contentPrimary
-                  : theme.colors.contentSecondary
-              }
-              overrides={{
-                Block: {
-                  style: {
-                    cursor: "pointer",
-                    ":hover": {
-                      color: theme.colors.contentPrimary,
-                    },
-                  },
-                },
-              }}
-            >
-              {item.label}
-            </LabelMedium>
-          </NextLink>
-        ))}
-      </nav>
-      <div
-        className={css({
-          display: "flex",
-          justifyContent: "flex-end",
-          alignItems: "center",
-          gap: "12px",
-        })}
-      >
-        <Button
-          kind="secondary"
-          onClick={toggleTheme}
-          overrides={{
-            BaseButton: {
-              style: {
-                minWidth: "44px",
-                width: "44px",
-                height: "44px",
-                padding: "0",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
-              },
+                height: "40px",
+                "@media (max-width: 768px)": {
+                  height: "32px",
+                },
+              })}
+            >
+              <img
+                src="/matchbox.png"
+                alt="Matchbox"
+                className={css({
+                  height: "100%",
+                  width: "auto",
+                  imageRendering: "crisp-edges",
+                  filter: currentTheme === "dark" ? "invert(1)" : "none",
+                })}
+              />
+            </div>
+          </NextLink>
+        </div>
+
+        {/* Desktop Navigation */}
+        <nav
+          className={css({
+            display: "flex",
+            gap: "24px",
+            justifyContent: "center",
+            "@media (max-width: 768px)": {
+              display: "none",
             },
-          }}
-          aria-label={`Switch to ${currentTheme === "light" ? "dark" : "light"} mode`}
+          })}
         >
-          {currentTheme === "light" ? (
-            <MoonIcon color={theme.colors.contentPrimary} />
+          {navItems.map((item) => (
+            <NextLink
+              key={item.href}
+              href={item.href}
+              style={{ textDecoration: "none" }}
+            >
+              <LabelMedium
+                color={
+                  router.pathname === item.href
+                    ? theme.colors.contentPrimary
+                    : theme.colors.contentSecondary
+                }
+                overrides={{
+                  Block: {
+                    style: {
+                      cursor: "pointer",
+                      ":hover": {
+                        color: theme.colors.contentPrimary,
+                      },
+                    },
+                  },
+                }}
+              >
+                {item.label}
+              </LabelMedium>
+            </NextLink>
+          ))}
+        </nav>
+
+        {/* Desktop Actions */}
+        <div
+          className={css({
+            display: "flex",
+            justifyContent: "flex-end",
+            alignItems: "center",
+            gap: "12px",
+            "@media (max-width: 768px)": {
+              display: "none",
+            },
+          })}
+        >
+          <Button
+            kind="secondary"
+            onClick={toggleTheme}
+            overrides={{
+              BaseButton: {
+                style: {
+                  minWidth: "44px",
+                  width: "44px",
+                  height: "44px",
+                  padding: "0",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                },
+              },
+            }}
+            aria-label={`Switch to ${currentTheme === "light" ? "dark" : "light"} mode`}
+          >
+            {currentTheme === "light" ? (
+              <MoonIcon color={theme.colors.contentPrimary} />
+            ) : (
+              <SunIcon color={theme.colors.contentPrimary} />
+            )}
+          </Button>
+          {isConnected && address ? (
+            <Button kind="secondary" onClick={() => disconnect()}>
+              {address.slice(0, 6)}...{address.slice(-4)}
+            </Button>
           ) : (
-            <SunIcon color={theme.colors.contentPrimary} />
+            <Button kind="primary" onClick={handleConnect}>
+              Connect Wallet
+            </Button>
           )}
-        </Button>
-        {isConnected && address ? (
-          <Button kind="secondary" onClick={() => disconnect()}>
-            {address.slice(0, 6)}...{address.slice(-4)}
-          </Button>
-        ) : (
-          <Button kind="primary" onClick={handleConnect}>
-            Connect Wallet
-          </Button>
-        )}
-      </div>
-    </header>
+        </div>
+
+        {/* Mobile Menu Button */}
+        <div
+          className={css({
+            display: "none",
+            "@media (max-width: 768px)": {
+              display: "flex",
+              justifyContent: "flex-end",
+              alignItems: "center",
+              gap: "8px",
+            },
+          })}
+        >
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className={css({
+              background: "none",
+              border: "none",
+              padding: "8px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            })}
+            aria-label={`Switch to ${currentTheme === "light" ? "dark" : "light"} mode`}
+          >
+            {currentTheme === "light" ? (
+              <MoonIcon color={theme.colors.contentPrimary} />
+            ) : (
+              <SunIcon color={theme.colors.contentPrimary} />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className={css({
+              background: "none",
+              border: "none",
+              padding: "8px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            })}
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+          >
+            {mobileMenuOpen ? (
+              <CloseIcon color={theme.colors.contentPrimary} />
+            ) : (
+              <MenuIcon color={theme.colors.contentPrimary} />
+            )}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className={css({
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: theme.colors.backgroundPrimary,
+            zIndex: 99,
+            paddingTop: "70px",
+            display: "none",
+            "@media (max-width: 768px)": {
+              display: "flex",
+              flexDirection: "column",
+            },
+          })}
+        >
+          <nav
+            className={css({
+              display: "flex",
+              flexDirection: "column",
+              padding: "24px",
+              gap: "8px",
+            })}
+          >
+            {navItems.map((item) => (
+              <NextLink
+                key={item.href}
+                href={item.href}
+                style={{ textDecoration: "none" }}
+              >
+                <div
+                  className={css({
+                    padding: "16px",
+                    borderRadius: "12px",
+                    backgroundColor:
+                      router.pathname === item.href
+                        ? theme.colors.backgroundSecondary
+                        : "transparent",
+                    transition: "background-color 0.2s ease",
+                    ":hover": {
+                      backgroundColor: theme.colors.backgroundSecondary,
+                    },
+                  })}
+                >
+                  <LabelMedium
+                    color={
+                      router.pathname === item.href
+                        ? theme.colors.contentPrimary
+                        : theme.colors.contentSecondary
+                    }
+                    overrides={{
+                      Block: {
+                        style: {
+                          fontSize: "18px",
+                        },
+                      },
+                    }}
+                  >
+                    {item.label}
+                  </LabelMedium>
+                </div>
+              </NextLink>
+            ))}
+          </nav>
+
+          <div
+            className={css({
+              padding: "24px",
+              marginTop: "auto",
+              borderTop: `1px solid ${theme.colors.borderOpaque}`,
+            })}
+          >
+            {isConnected && address ? (
+              <Button
+                kind="secondary"
+                onClick={() => {
+                  disconnect()
+                  setMobileMenuOpen(false)
+                }}
+                overrides={{
+                  BaseButton: {
+                    style: {
+                      width: "100%",
+                    },
+                  },
+                }}
+              >
+                Disconnect ({address.slice(0, 6)}...{address.slice(-4)})
+              </Button>
+            ) : (
+              <Button
+                kind="primary"
+                onClick={() => {
+                  handleConnect()
+                  setMobileMenuOpen(false)
+                }}
+                overrides={{
+                  BaseButton: {
+                    style: {
+                      width: "100%",
+                    },
+                  },
+                }}
+              >
+                Connect Wallet
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

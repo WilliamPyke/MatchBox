@@ -537,6 +537,13 @@ export default function BoostPage() {
                             display: "grid",
                             gridTemplateColumns: "1fr 1fr 1fr",
                             gap: "16px",
+                            "@media (max-width: 768px)": {
+                              gridTemplateColumns: "1fr 1fr",
+                            },
+                            "@media (max-width: 480px)": {
+                              gridTemplateColumns: "1fr",
+                              gap: "12px",
+                            },
                           })}
                         >
                           <div>
@@ -674,6 +681,7 @@ export default function BoostPage() {
                           gap: "8px",
                           alignItems: "center",
                           marginBottom: "scale400",
+                          flexWrap: "wrap",
                         })}
                       >
                         <LabelSmall color={theme.colors.contentSecondary}>
@@ -711,6 +719,18 @@ export default function BoostPage() {
                           No gauges available to vote on
                         </ParagraphMedium>
                       ) : (
+                        <div
+                          className={css({
+                            overflowX: "auto",
+                            WebkitOverflowScrolling: "touch",
+                            margin: "0 -16px",
+                            padding: "0 16px",
+                            "@media (max-width: 768px)": {
+                              margin: "0 -12px",
+                              padding: "0 12px",
+                            },
+                          })}
+                        >
                         <TableBuilder
                           data={filteredAndSortedGauges}
                           overrides={{
@@ -718,16 +738,23 @@ export default function BoostPage() {
                               style: {
                                 maxHeight: "400px",
                                 overflow: "auto",
+                                minWidth: "800px",
                               },
                             },
                             TableHeadCell: {
                               style: {
                                 backgroundColor: theme.colors.backgroundSecondary,
+                                whiteSpace: "nowrap",
                               },
                             },
                             TableBodyRow: {
                               style: {
                                 backgroundColor: theme.colors.backgroundPrimary,
+                              },
+                            },
+                            TableBodyCell: {
+                              style: {
+                                whiteSpace: "nowrap",
                               },
                             },
                           }}
@@ -855,6 +882,7 @@ export default function BoostPage() {
                             }}
                           </TableBuilderColumn>
                         </TableBuilder>
+                        </div>
                       )}
                     </div>
 
@@ -864,6 +892,11 @@ export default function BoostPage() {
                         display: "flex",
                         gap: "16px",
                         marginTop: "8px",
+                        flexWrap: "wrap",
+                        "@media (max-width: 480px)": {
+                          flexDirection: "column",
+                          gap: "12px",
+                        },
                       })}
                     >
                       <Button

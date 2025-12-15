@@ -77,6 +77,10 @@ export default function HomePage() {
           alignItems: "center",
           gap: "48px",
           paddingTop: "48px",
+          "@media (max-width: 768px)": {
+            gap: "32px",
+            paddingTop: "24px",
+          },
         })}
       >
         <SpringIn delay={0} variant="card">
@@ -118,8 +122,9 @@ export default function HomePage() {
             gap: "20px",
             width: "100%",
             maxWidth: "900px",
-            "@media (max-width: 768px)": {
+            "@media (max-width: 900px)": {
               gridTemplateColumns: "1fr",
+              gap: "16px",
             },
           })}
         >
