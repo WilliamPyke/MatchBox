@@ -2,11 +2,10 @@ import { AddressLink } from "@/components/AddressLink"
 import { Layout } from "@/components/Layout"
 import { SpringIn } from "@/components/SpringIn"
 import { getContractConfig } from "@/config/contracts"
-import { useBoostInfo } from "@/hooks/useGauges"
 import { useGaugeProfile } from "@/hooks/useGaugeProfiles"
+import { useBoostInfo } from "@/hooks/useGauges"
 import { useBribeAddress, useBribeIncentives } from "@/hooks/useVoting"
 import { formatFixedPoint, formatMultiplier } from "@/utils/format"
-import { CHAIN_ID, NON_STAKING_GAUGE_ABI } from "@repo/shared/contracts"
 import {
   Button,
   Card,
@@ -20,6 +19,7 @@ import {
   Tag,
   useStyletron,
 } from "@mezo-org/mezo-clay"
+import { CHAIN_ID, NON_STAKING_GAUGE_ABI } from "@repo/shared/contracts"
 import Link from "next/link"
 import { useRouter } from "next/router"
 import type { Address } from "viem"
@@ -98,10 +98,13 @@ export default function GaugeDetailPage() {
   })
 
   const veBTCTokenId =
-    mappedGauge?.toLowerCase() === gaugeAddress?.toLowerCase() ? tokenId : undefined
+    mappedGauge?.toLowerCase() === gaugeAddress?.toLowerCase()
+      ? tokenId
+      : undefined
 
   // Get boost info
-  const { boostMultiplier, isLoading: isLoadingBoost } = useBoostInfo(veBTCTokenId)
+  const { boostMultiplier, isLoading: isLoadingBoost } =
+    useBoostInfo(veBTCTokenId)
 
   // Get veBTC voting power
   const { data: veBTCVotingPower } = useReadContract({
@@ -230,7 +233,9 @@ export default function GaugeDetailPage() {
                     >
                       <HeadingLarge
                         color={
-                          profile?.display_name || profile?.description || profile?.profile_picture_url
+                          profile?.display_name ||
+                          profile?.description ||
+                          profile?.profile_picture_url
                             ? theme.colors.positive
                             : theme.colors.negative
                         }
@@ -404,7 +409,8 @@ export default function GaugeDetailPage() {
                     <div
                       className={css({
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+                        gridTemplateColumns:
+                          "repeat(auto-fill, minmax(200px, 1fr))",
                         gap: "16px",
                       })}
                     >
@@ -442,4 +448,3 @@ export default function GaugeDetailPage() {
     </Layout>
   )
 }
-

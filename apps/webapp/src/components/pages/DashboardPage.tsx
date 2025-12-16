@@ -1,7 +1,7 @@
 import { Layout } from "@/components/Layout"
 import { SpringIn } from "@/components/SpringIn"
-import { useBoostGaugeForToken, useBoostInfo } from "@/hooks/useGauges"
 import { useGaugeProfile } from "@/hooks/useGaugeProfiles"
+import { useBoostGaugeForToken, useBoostInfo } from "@/hooks/useGauges"
 import { useVeBTCLocks, useVeMEZOLocks } from "@/hooks/useLocks"
 import { useVoteState } from "@/hooks/useVoting"
 import {
@@ -99,7 +99,9 @@ function VeBTCLockCard({
             >
               <LabelMedium
                 color={
-                  profile?.display_name || profile?.description || profile?.profile_picture_url
+                  profile?.display_name ||
+                  profile?.description ||
+                  profile?.profile_picture_url
                     ? theme.colors.positive
                     : theme.colors.negative
                 }
@@ -176,9 +178,7 @@ function VeBTCLockCard({
             </LabelMedium>
           </div>
           <div>
-            <LabelSmall color={theme.colors.contentSecondary}>
-              Gauge
-            </LabelSmall>
+            <LabelSmall color={theme.colors.contentSecondary}>Gauge</LabelSmall>
             {hasGauge && gaugeAddress ? (
               <Link
                 href={`/gauges/${gaugeAddress}`}
@@ -474,7 +474,11 @@ export default function DashboardPage() {
                     })}
                   >
                     {veBTCLocks.map((lock, index) => (
-                      <SpringIn key={lock.tokenId.toString()} delay={5 + index} variant="card">
+                      <SpringIn
+                        key={lock.tokenId.toString()}
+                        delay={5 + index}
+                        variant="card"
+                      >
                         <VeBTCLockCard lock={lock} />
                       </SpringIn>
                     ))}
@@ -515,7 +519,11 @@ export default function DashboardPage() {
                     })}
                   >
                     {veMEZOLocks.map((lock, index) => (
-                      <SpringIn key={lock.tokenId.toString()} delay={6 + veBTCLocks.length + index} variant="card">
+                      <SpringIn
+                        key={lock.tokenId.toString()}
+                        delay={6 + veBTCLocks.length + index}
+                        variant="card"
+                      >
                         <VeMEZOLockCard lock={lock} />
                       </SpringIn>
                     ))}
