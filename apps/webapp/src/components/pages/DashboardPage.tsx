@@ -261,7 +261,12 @@ function VeBTCLockCard({
           </div>
           <div>
             <LabelSmall color={theme.colors.contentSecondary}>
-              Gauge {hasGauge && !isLoadingAPY && apy !== null && `(${formatAPY(apy)} APY)`}
+              Gauge{" "}
+              {hasGauge && !isLoadingAPY && apy !== null && (
+                <span className={css({ color: theme.colors.positive })}>
+                  ({formatAPY(apy)} APY)
+                </span>
+              )}
             </LabelSmall>
             {hasGauge && gaugeAddress ? (
               <Link
