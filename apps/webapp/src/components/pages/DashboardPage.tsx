@@ -14,6 +14,7 @@ import {
   Card,
   HeadingLarge,
   HeadingMedium,
+  LabelLarge,
   LabelMedium,
   LabelSmall,
   ParagraphMedium,
@@ -26,6 +27,17 @@ import Link from "next/link"
 import { useEffect, useMemo } from "react"
 import { type Address, formatUnits } from "viem"
 import { useAccount } from "wagmi"
+
+// Format token values with appropriate precision based on magnitude
+function formatTokenValue(amount: bigint, decimals: number): string {
+  const value = Number(formatUnits(amount, decimals))
+  if (value === 0) return "0"
+  if (value >= 1000) return value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+  if (value >= 1) return value.toLocaleString(undefined, { maximumFractionDigits: 4 })
+  if (value >= 0.0001) return value.toLocaleString(undefined, { maximumFractionDigits: 6 })
+  // For very small values (like satoshis), show up to 8 decimals
+  return value.toLocaleString(undefined, { maximumFractionDigits: 8, minimumSignificantDigits: 1 })
+}
 
 function VeBTCLockCard({
   lock,
@@ -157,7 +169,7 @@ function VeBTCLockCard({
               Locked Amount
             </LabelSmall>
             <LabelMedium>
-              {formatUnits(lock.amount, 18).slice(0, 10)} BTC
+              {formatTokenValue(lock.amount, 18)} BTC
             </LabelMedium>
           </div>
           <div>
@@ -165,7 +177,7 @@ function VeBTCLockCard({
               Voting Power
             </LabelSmall>
             <LabelMedium>
-              {formatUnits(lock.votingPower, 18).slice(0, 10)}
+              {formatTokenValue(lock.votingPower, 18)}
             </LabelMedium>
           </div>
           <div>
@@ -271,7 +283,7 @@ function VeMEZOLockCard({
               Locked Amount
             </LabelSmall>
             <LabelMedium>
-              {formatUnits(lock.amount, 18).slice(0, 10)} MEZO
+              {formatTokenValue(lock.amount, 18)} MEZO
             </LabelMedium>
           </div>
           <div>
@@ -279,7 +291,7 @@ function VeMEZOLockCard({
               Voting Power
             </LabelSmall>
             <LabelMedium>
-              {formatUnits(lock.votingPower, 18).slice(0, 10)}
+              {formatTokenValue(lock.votingPower, 18)}
             </LabelMedium>
           </div>
           <div>
@@ -287,7 +299,7 @@ function VeMEZOLockCard({
               Used Weight
             </LabelSmall>
             <LabelMedium>
-              {usedWeight ? formatUnits(usedWeight, 18).slice(0, 10) : "0"}
+              {usedWeight ? formatTokenValue(usedWeight, 18) : "0"}
             </LabelMedium>
           </div>
           <div>
@@ -324,18 +336,20 @@ function VeMEZOLockCard({
   )
 }
 
-function ClaimableBribesCard({
+function ClaimableRewardRow({
   tokenId,
   bribes,
   onClaim,
   isPending,
   isConfirming,
+  isLast,
 }: {
   tokenId: bigint
   bribes: ClaimableBribe[]
   onClaim: () => void
   isPending: boolean
   isConfirming: boolean
+  isLast: boolean
 }) {
   const [css, theme] = useStyletron()
 
@@ -376,81 +390,100 @@ function ClaimableBribesCard({
         alignItems: "center",
         justifyContent: "space-between",
         gap: "16px",
-        padding: "16px 20px",
-        backgroundColor: theme.colors.backgroundSecondary,
-        borderRadius: "12px",
-        border: `1px solid ${theme.colors.borderOpaque}`,
+        padding: "20px 0",
+        borderBottom: isLast ? "none" : `1px solid ${theme.colors.borderOpaque}`,
         "@media (max-width: 600px)": {
           flexDirection: "column",
           alignItems: "stretch",
-          gap: "12px",
+          gap: "16px",
         },
       })}
     >
+      {/* Left side: Token ID badge */}
       <div
         className={css({
           display: "flex",
           alignItems: "center",
-          gap: "16px",
+          gap: "12px",
+          minWidth: "140px",
+        })}
+      >
+        <div
+          className={css({
+            width: "36px",
+            height: "36px",
+            borderRadius: "10px",
+            background: `linear-gradient(135deg, ${theme.colors.backgroundTertiary} 0%, ${theme.colors.backgroundSecondary} 100%)`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            border: `1px solid ${theme.colors.borderOpaque}`,
+          })}
+        >
+          <LabelSmall color={theme.colors.contentSecondary}>
+            #{tokenId.toString()}
+          </LabelSmall>
+        </div>
+        <LabelSmall color={theme.colors.contentSecondary}>veMEZO</LabelSmall>
+      </div>
+
+      {/* Center: Rewards */}
+      <div
+        className={css({
+          display: "flex",
+          alignItems: "center",
+          gap: "20px",
           flex: 1,
-          minWidth: 0,
+          justifyContent: "center",
+          flexWrap: "wrap",
           "@media (max-width: 600px)": {
-            flexDirection: "column",
-            alignItems: "flex-start",
-            gap: "8px",
+            justifyContent: "flex-start",
           },
         })}
       >
-        <LabelSmall
-          color={theme.colors.contentSecondary}
-          overrides={{
-            Block: {
-              style: {
-                whiteSpace: "nowrap",
-              },
-            },
-          }}
-        >
-          veMEZO #{tokenId.toString()}
-        </LabelSmall>
-
-        <div
-          className={css({
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-            flexWrap: "wrap",
-          })}
-        >
-          {rewardsByToken.map((reward) => (
-            <div
-              key={reward.symbol}
-              className={css({
-                display: "flex",
-                alignItems: "baseline",
-                gap: "4px",
-              })}
+        {rewardsByToken.map((reward) => (
+          <div
+            key={reward.symbol}
+            className={css({
+              display: "flex",
+              alignItems: "baseline",
+              gap: "6px",
+            })}
+          >
+            <LabelLarge
+              overrides={{
+                Block: {
+                  style: {
+                    fontVariantNumeric: "tabular-nums",
+                  },
+                },
+              }}
             >
-              <LabelMedium>
-                {Number(formatUnits(reward.amount, reward.decimals)).toLocaleString(undefined, {
-                  maximumFractionDigits: 4,
-                })}
-              </LabelMedium>
-              <LabelSmall color={theme.colors.contentSecondary}>
-                {reward.symbol}
-              </LabelSmall>
-            </div>
-          ))}
-        </div>
+              {formatTokenValue(reward.amount, reward.decimals)}
+            </LabelLarge>
+            <LabelSmall color={theme.colors.contentSecondary}>
+              {reward.symbol}
+            </LabelSmall>
+          </div>
+        ))}
       </div>
 
+      {/* Right side: Claim button */}
       <Button
         onClick={onClaim}
         size="compact"
+        kind="secondary"
         isLoading={isPending || isConfirming}
         disabled={isPending || isConfirming}
+        overrides={{
+          Root: {
+            style: {
+              minWidth: "100px",
+            },
+          },
+        }}
       >
-        {isPending ? "Confirming..." : isConfirming ? "Claiming..." : "Claim"}
+        {isPending ? "Confirm..." : isConfirming ? "Claiming..." : "Claim"}
       </Button>
     </div>
   )
@@ -602,7 +635,7 @@ export default function DashboardPage() {
                       Your veBTC Power
                     </LabelSmall>
                     <HeadingMedium>
-                      {formatUnits(totalVeBTCVotingPower, 18).slice(0, 8)}
+                      {formatTokenValue(totalVeBTCVotingPower, 18)}
                     </HeadingMedium>
                   </div>
                 </Card>
@@ -626,7 +659,7 @@ export default function DashboardPage() {
                       Your veMEZO Power
                     </LabelSmall>
                     <HeadingMedium>
-                      {formatUnits(totalVeMEZOVotingPower, 18).slice(0, 8)}
+                      {formatTokenValue(totalVeMEZOVotingPower, 18)}
                     </HeadingMedium>
                   </div>
                 </Card>
@@ -636,79 +669,135 @@ export default function DashboardPage() {
             {/* Claimable Rewards Section */}
             {hasClaimableRewards && (
               <SpringIn delay={4} variant="card">
-                <Card withBorder overrides={{}}>
-                  <div className={css({ padding: "8px 0" })}>
+                <div
+                  className={css({
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    border: `1px solid ${theme.colors.borderOpaque}`,
+                    background: theme.colors.backgroundPrimary,
+                  })}
+                >
+                  {/* Header with total rewards */}
+                  <div
+                    className={css({
+                      padding: "24px 28px",
+                      background: `linear-gradient(135deg, ${theme.colors.backgroundSecondary} 0%, ${theme.colors.backgroundPrimary} 100%)`,
+                      borderBottom: `1px solid ${theme.colors.borderOpaque}`,
+                    })}
+                  >
                     <div
                       className={css({
                         display: "flex",
-                        alignItems: "center",
+                        alignItems: "flex-start",
                         justifyContent: "space-between",
-                        marginBottom: "16px",
+                        gap: "24px",
+                        "@media (max-width: 600px)": {
+                          flexDirection: "column",
+                          gap: "20px",
+                        },
                       })}
                     >
                       <div>
-                        <LabelMedium>Claimable Rewards</LabelMedium>
-                        <LabelSmall color={theme.colors.contentSecondary}>
-                          {bribesGroupedByTokenId.size}{" "}
-                          {bribesGroupedByTokenId.size === 1 ? "lock" : "locks"}{" "}
-                          with rewards
+                        <LabelSmall
+                          color={theme.colors.contentSecondary}
+                          overrides={{
+                            Block: {
+                              style: {
+                                textTransform: "uppercase",
+                                letterSpacing: "0.05em",
+                                marginBottom: "8px",
+                              },
+                            },
+                          }}
+                        >
+                          Total Claimable
                         </LabelSmall>
+                        <div
+                          className={css({
+                            display: "flex",
+                            alignItems: "baseline",
+                            gap: "16px",
+                            flexWrap: "wrap",
+                          })}
+                        >
+                          {Array.from(totalClaimable.entries()).map(
+                            ([tokenAddr, info]) => (
+                              <div
+                                key={tokenAddr}
+                                className={css({
+                                  display: "flex",
+                                  alignItems: "baseline",
+                                  gap: "8px",
+                                })}
+                              >
+                                <HeadingLarge
+                                  overrides={{
+                                    Block: {
+                                      style: {
+                                        fontVariantNumeric: "tabular-nums",
+                                        background: `linear-gradient(135deg, ${theme.colors.contentPrimary} 0%, ${theme.colors.positive} 100%)`,
+                                        WebkitBackgroundClip: "text",
+                                        WebkitTextFillColor: "transparent",
+                                        backgroundClip: "text",
+                                      },
+                                    },
+                                  }}
+                                >
+                                  {formatTokenValue(info.amount, info.decimals)}
+                                </HeadingLarge>
+                                <LabelMedium color={theme.colors.contentSecondary}>
+                                  {info.symbol}
+                                </LabelMedium>
+                              </div>
+                            ),
+                          )}
+                        </div>
                       </div>
+
                       <div
                         className={css({
                           display: "flex",
-                          alignItems: "baseline",
+                          alignItems: "center",
                           gap: "8px",
+                          padding: "8px 14px",
+                          borderRadius: "20px",
+                          background: `${theme.colors.positive}15`,
+                          border: `1px solid ${theme.colors.positive}30`,
                         })}
                       >
-                        {Array.from(totalClaimable.entries()).map(
-                          ([tokenAddr, info]) => (
-                            <div
-                              key={tokenAddr}
-                              className={css({
-                                display: "flex",
-                                alignItems: "baseline",
-                                gap: "4px",
-                              })}
-                            >
-                              <HeadingMedium color={theme.colors.positive}>
-                                {Number(
-                                  formatUnits(info.amount, info.decimals),
-                                ).toLocaleString(undefined, {
-                                  maximumFractionDigits: 4,
-                                })}
-                              </HeadingMedium>
-                              <LabelSmall color={theme.colors.contentSecondary}>
-                                {info.symbol}
-                              </LabelSmall>
-                            </div>
-                          ),
-                        )}
+                        <div
+                          className={css({
+                            width: "8px",
+                            height: "8px",
+                            borderRadius: "50%",
+                            backgroundColor: theme.colors.positive,
+                            boxShadow: `0 0 8px ${theme.colors.positive}`,
+                          })}
+                        />
+                        <LabelSmall color={theme.colors.positive}>
+                          {bribesGroupedByTokenId.size} {bribesGroupedByTokenId.size === 1 ? "position" : "positions"} ready
+                        </LabelSmall>
                       </div>
                     </div>
-
-                    <div
-                      className={css({
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: "8px",
-                      })}
-                    >
-                      {Array.from(bribesGroupedByTokenId.entries()).map(
-                        ([tokenIdStr, bribes]) => (
-                          <ClaimableBribesCard
-                            key={tokenIdStr}
-                            tokenId={BigInt(tokenIdStr)}
-                            bribes={bribes}
-                            onClaim={() => handleClaimBribes(BigInt(tokenIdStr))}
-                            isPending={isClaimPending}
-                            isConfirming={isClaimConfirming}
-                          />
-                        ),
-                      )}
-                    </div>
                   </div>
-                </Card>
+
+                  {/* Reward rows */}
+                  <div className={css({ padding: "4px 28px 8px" })}>
+                    {Array.from(bribesGroupedByTokenId.entries()).map(
+                      ([tokenIdStr, bribes], index, arr) => (
+                        <ClaimableRewardRow
+                          key={tokenIdStr}
+                          tokenId={BigInt(tokenIdStr)}
+                          bribes={bribes}
+                          onClaim={() => handleClaimBribes(BigInt(tokenIdStr))}
+                          isPending={isClaimPending}
+                          isConfirming={isClaimConfirming}
+                          isLast={index === arr.length - 1}
+                        />
+                      ),
+                    )}
+                  </div>
+                </div>
               </SpringIn>
             )}
 
