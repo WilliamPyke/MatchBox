@@ -1,12 +1,10 @@
 import { Layout } from "@/components/Layout"
 import { SpringIn } from "@/components/SpringIn"
+import { getContractConfig } from "@/config/contracts"
+import { useGaugeProfiles } from "@/hooks/useGaugeProfiles"
 import { useBoostGauges, useVoterTotals } from "@/hooks/useGauges"
 import type { BoostGauge } from "@/hooks/useGauges"
-import { useGaugeProfiles } from "@/hooks/useGaugeProfiles"
 import { useBribeAddress, useBribeIncentives } from "@/hooks/useVoting"
-import { useReadContracts } from "wagmi"
-import { getContractConfig } from "@/config/contracts"
-import { CHAIN_ID } from "@repo/shared/contracts"
 import { formatFixedPoint, formatMultiplier } from "@/utils/format"
 import {
   Card,
@@ -23,10 +21,12 @@ import {
   Tag,
   useStyletron,
 } from "@mezo-org/mezo-clay"
+import { CHAIN_ID } from "@repo/shared/contracts"
 import Link from "next/link"
 import type React from "react"
 import { useCallback, useMemo, useState } from "react"
 import { formatUnits } from "viem"
+import { useReadContracts } from "wagmi"
 
 type SortColumn =
   | "veBTCWeight"
@@ -88,10 +88,7 @@ export default function GaugesPage() {
   } = useVoterTotals()
 
   // Fetch gauge profiles from Supabase
-  const gaugeAddresses = useMemo(
-    () => gauges.map((g) => g.address),
-    [gauges],
-  )
+  const gaugeAddresses = useMemo(() => gauges.map((g) => g.address), [gauges])
   const { profiles: gaugeProfiles } = useGaugeProfiles(gaugeAddresses)
 
   // Load bribe addresses for all gauges for sorting
@@ -116,7 +113,10 @@ export default function GaugesPage() {
       const hasBribe =
         bribeAddress !== undefined &&
         bribeAddress !== "0x0000000000000000000000000000000000000000"
-      return { gaugeAddress: gaugeAddr, bribeAddress: hasBribe ? bribeAddress : undefined }
+      return {
+        gaugeAddress: gaugeAddr,
+        bribeAddress: hasBribe ? bribeAddress : undefined,
+      }
     })
   }, [bribeAddressesData, gaugeAddresses])
 
@@ -143,7 +143,11 @@ export default function GaugesPage() {
   // Build a list of all reward token fetches needed
   const rewardTokenFetches = useMemo(() => {
     if (!rewardsLengthData) return []
-    const fetches: Array<{ gaugeAddress: `0x${string}`; bribeAddress: `0x${string}`; tokenIndex: number }> = []
+    const fetches: Array<{
+      gaugeAddress: `0x${string}`
+      bribeAddress: `0x${string}`
+      tokenIndex: number
+    }> = []
     bribeAddresses.forEach(({ gaugeAddress, bribeAddress }, i) => {
       if (!bribeAddress) return
       const length = Number(rewardsLengthData[i]?.result ?? 0n)
@@ -177,12 +181,16 @@ export default function GaugesPage() {
 
   // Get current epoch start for fetching rewards
   const EPOCH_DURATION = 7 * 24 * 60 * 60
-  const currentEpochStart = BigInt(Math.floor(Date.now() / 1000 / EPOCH_DURATION) * EPOCH_DURATION)
+  const currentEpochStart = BigInt(
+    Math.floor(Date.now() / 1000 / EPOCH_DURATION) * EPOCH_DURATION,
+  )
 
   // Fetch token rewards per epoch for all tokens
   const { data: tokenRewardsData } = useReadContracts({
     contracts: rewardTokenFetches.map(({ bribeAddress }, i) => {
-      const tokenAddress = rewardTokensData?.[i]?.result as `0x${string}` | undefined
+      const tokenAddress = rewardTokensData?.[i]?.result as
+        | `0x${string}`
+        | undefined
       return {
         address: bribeAddress,
         abi: [
@@ -198,7 +206,10 @@ export default function GaugesPage() {
           },
         ] as const,
         functionName: "tokenRewardsPerEpoch" as const,
-        args: [tokenAddress ?? "0x0000000000000000000000000000000000000000", currentEpochStart],
+        args: [
+          tokenAddress ?? "0x0000000000000000000000000000000000000000",
+          currentEpochStart,
+        ],
       }
     }),
     query: {
@@ -321,8 +332,10 @@ export default function GaugesPage() {
             break
           }
           case "bribes": {
-            const aAmount = gaugeBribeAmountMap.get(a.address.toLowerCase()) ?? 0n
-            const bAmount = gaugeBribeAmountMap.get(b.address.toLowerCase()) ?? 0n
+            const aAmount =
+              gaugeBribeAmountMap.get(a.address.toLowerCase()) ?? 0n
+            const bAmount =
+              gaugeBribeAmountMap.get(b.address.toLowerCase()) ?? 0n
             // Sort by total bribe amount
             comparison = aAmount < bAmount ? -1 : aAmount > bAmount ? 1 : 0
             break
@@ -458,248 +471,260 @@ export default function GaugesPage() {
         ) : (
           <SpringIn delay={4} variant="card">
             <Card title="Gauges" withBorder overrides={{}}>
-            <div className={css({ padding: "16px 0" })}>
-              <div
-                className={css({
-                  display: "flex",
-                  gap: "8px",
-                  alignItems: "center",
-                  marginBottom: "16px",
-                  flexWrap: "wrap",
-                })}
-              >
-                <LabelSmall color={theme.colors.contentSecondary}>
-                  Filter by status:
-                </LabelSmall>
-                <Tag
-                  closeable={false}
-                  onClick={() => setStatusFilter("all")}
-                  color={statusFilter === "all" ? "blue" : "gray"}
+              <div className={css({ padding: "16px 0" })}>
+                <div
+                  className={css({
+                    display: "flex",
+                    gap: "8px",
+                    alignItems: "center",
+                    marginBottom: "16px",
+                    flexWrap: "wrap",
+                  })}
                 >
-                  All
-                </Tag>
-                <Tag
-                  closeable={false}
-                  onClick={() => setStatusFilter("active")}
-                  color={statusFilter === "active" ? "green" : "gray"}
-                >
-                  Active
-                </Tag>
-                <Tag
-                  closeable={false}
-                  onClick={() => setStatusFilter("inactive")}
-                  color={statusFilter === "inactive" ? "red" : "gray"}
-                >
-                  Inactive
-                </Tag>
-              </div>
-
-              <div
-                className={css({
-                  overflowX: "auto",
-                  WebkitOverflowScrolling: "touch",
-                  margin: "0 -16px",
-                  padding: "0 16px",
-                  "@media (max-width: 768px)": {
-                    margin: "0 -12px",
-                    padding: "0 12px",
-                  },
-                })}
-              >
-              <TableBuilder
-              data={filteredAndSortedGauges}
-              overrides={{
-                Root: {
-                  style: {
-                    maxHeight: "600px",
-                    overflow: "auto",
-                    minWidth: "800px",
-                  },
-                },
-                TableHeadCell: {
-                  style: {
-                    backgroundColor: theme.colors.backgroundSecondary,
-                    whiteSpace: "nowrap",
-                  },
-                },
-                TableBodyRow: {
-                  style: {
-                    backgroundColor: theme.colors.backgroundPrimary,
-                  },
-                },
-                TableBodyCell: {
-                  style: {
-                    whiteSpace: "nowrap",
-                    verticalAlign: "middle",
-                  },
-                },
-              }}
-            >
-              <TableBuilderColumn header="Gauge">
-                {(gauge: BoostGauge) => {
-                  const profile = gaugeProfiles.get(gauge.address.toLowerCase())
-                  return (
-                    <Link
-                      href={`/gauges/${gauge.address}`}
-                      className={css({
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "12px",
-                        textDecoration: "none",
-                        color: "inherit",
-                        ":hover": {
-                          opacity: 0.8,
-                        },
-                      })}
-                    >
-                      {/* Profile Picture */}
-                      <div
-                        className={css({
-                          width: "36px",
-                          height: "36px",
-                          borderRadius: "50%",
-                          backgroundColor: theme.colors.backgroundSecondary,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          overflow: "hidden",
-                          flexShrink: 0,
-                          border: `1px solid ${theme.colors.borderOpaque}`,
-                        })}
-                      >
-                        {profile?.profile_picture_url ? (
-                          <img
-                            src={profile.profile_picture_url}
-                            alt={`Gauge #${gauge.veBTCTokenId.toString()}`}
-                            className={css({
-                              width: "100%",
-                              height: "100%",
-                              objectFit: "cover",
-                            })}
-                          />
-                        ) : (
-                          <LabelSmall
-                            color={theme.colors.contentSecondary}
-                            overrides={{
-                              Block: {
-                                style: { fontSize: "10px" },
-                              },
-                            }}
-                          >
-                            #{gauge.veBTCTokenId > 0n ? gauge.veBTCTokenId.toString() : "?"}
-                          </LabelSmall>
-                        )}
-                      </div>
-                      {/* Gauge Info */}
-                      <div
-                        className={css({
-                          display: "flex",
-                          flexDirection: "column",
-                          gap: "2px",
-                          minWidth: 0,
-                        })}
-                      >
-                        <LabelSmall
-                          color={
-                            profile?.display_name || profile?.description || profile?.profile_picture_url
-                              ? theme.colors.positive
-                              : theme.colors.negative
-                          }
-                        >
-                          {profile?.display_name
-                            ? profile.display_name
-                            : gauge.veBTCTokenId > 0n
-                              ? `veBTC #${gauge.veBTCTokenId.toString()}`
-                              : `${gauge.address.slice(0, 6)}...${gauge.address.slice(-4)}`}
-                        </LabelSmall>
-                        {profile?.description && (
-                          <ParagraphSmall
-                            color={theme.colors.contentSecondary}
-                            overrides={{
-                              Block: {
-                                style: {
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  maxWidth: "200px",
-                                  margin: 0,
-                                },
-                              },
-                            }}
-                          >
-                            {profile.description}
-                          </ParagraphSmall>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                }}
-              </TableBuilderColumn>
-              <TableBuilderColumn
-                header={
-                  <SortableHeader column="veBTCWeight">
-                    veBTC Weight
-                  </SortableHeader>
-                }
-              >
-                {(gauge: BoostGauge) =>
-                  gauge.veBTCWeight !== undefined
-                    ? formatUnits(gauge.veBTCWeight, 18).slice(0, 10)
-                    : "-"
-                }
-              </TableBuilderColumn>
-              <TableBuilderColumn
-                header={
-                  <SortableHeader column="veMEZOWeight">
-                    veMEZO Weight
-                  </SortableHeader>
-                }
-              >
-                {(gauge: BoostGauge) =>
-                  formatUnits(gauge.totalWeight, 18).slice(0, 10)
-                }
-              </TableBuilderColumn>
-              <TableBuilderColumn
-                header={<SortableHeader column="boost">Boost</SortableHeader>}
-              >
-                {(gauge: BoostGauge) => formatMultiplier(gauge.boostMultiplier)}
-              </TableBuilderColumn>
-              <TableBuilderColumn
-                header={
-                  <SortableHeader column="bribes">Bribes</SortableHeader>
-                }
-              >
-                {(gauge: BoostGauge) => (
-                  <GaugeBribesCell gaugeAddress={gauge.address} />
-                )}
-              </TableBuilderColumn>
-              <TableBuilderColumn
-                header={
-                  <SortableHeader column="optimalVeMEZO">
-                    Optimal veMEZO
-                  </SortableHeader>
-                }
-              >
-                {(gauge: BoostGauge) =>
-                  gauge.optimalAdditionalVeMEZO !== undefined
-                    ? formatFixedPoint(gauge.optimalAdditionalVeMEZO)
-                    : "-"
-                }
-              </TableBuilderColumn>
-              <TableBuilderColumn header="Status">
-                {(gauge: BoostGauge) => (
+                  <LabelSmall color={theme.colors.contentSecondary}>
+                    Filter by status:
+                  </LabelSmall>
                   <Tag
-                    color={gauge.isAlive ? "green" : "red"}
                     closeable={false}
+                    onClick={() => setStatusFilter("all")}
+                    color={statusFilter === "all" ? "blue" : "gray"}
                   >
-                    {gauge.isAlive ? "Active" : "Inactive"}
+                    All
                   </Tag>
-                )}
-              </TableBuilderColumn>
-              </TableBuilder>
+                  <Tag
+                    closeable={false}
+                    onClick={() => setStatusFilter("active")}
+                    color={statusFilter === "active" ? "green" : "gray"}
+                  >
+                    Active
+                  </Tag>
+                  <Tag
+                    closeable={false}
+                    onClick={() => setStatusFilter("inactive")}
+                    color={statusFilter === "inactive" ? "red" : "gray"}
+                  >
+                    Inactive
+                  </Tag>
+                </div>
+
+                <div
+                  className={css({
+                    overflowX: "auto",
+                    WebkitOverflowScrolling: "touch",
+                    margin: "0 -16px",
+                    padding: "0 16px",
+                    "@media (max-width: 768px)": {
+                      margin: "0 -12px",
+                      padding: "0 12px",
+                    },
+                  })}
+                >
+                  <TableBuilder
+                    data={filteredAndSortedGauges}
+                    overrides={{
+                      Root: {
+                        style: {
+                          maxHeight: "600px",
+                          overflow: "auto",
+                          minWidth: "800px",
+                        },
+                      },
+                      TableHeadCell: {
+                        style: {
+                          backgroundColor: theme.colors.backgroundSecondary,
+                          whiteSpace: "nowrap",
+                        },
+                      },
+                      TableBodyRow: {
+                        style: {
+                          backgroundColor: theme.colors.backgroundPrimary,
+                        },
+                      },
+                      TableBodyCell: {
+                        style: {
+                          whiteSpace: "nowrap",
+                          verticalAlign: "middle",
+                        },
+                      },
+                    }}
+                  >
+                    <TableBuilderColumn header="Gauge">
+                      {(gauge: BoostGauge) => {
+                        const profile = gaugeProfiles.get(
+                          gauge.address.toLowerCase(),
+                        )
+                        return (
+                          <Link
+                            href={`/gauges/${gauge.address}`}
+                            className={css({
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "12px",
+                              textDecoration: "none",
+                              color: "inherit",
+                              ":hover": {
+                                opacity: 0.8,
+                              },
+                            })}
+                          >
+                            {/* Profile Picture */}
+                            <div
+                              className={css({
+                                width: "36px",
+                                height: "36px",
+                                borderRadius: "50%",
+                                backgroundColor:
+                                  theme.colors.backgroundSecondary,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                overflow: "hidden",
+                                flexShrink: 0,
+                                border: `1px solid ${theme.colors.borderOpaque}`,
+                              })}
+                            >
+                              {profile?.profile_picture_url ? (
+                                <img
+                                  src={profile.profile_picture_url}
+                                  alt={`Gauge #${gauge.veBTCTokenId.toString()}`}
+                                  className={css({
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "cover",
+                                  })}
+                                />
+                              ) : (
+                                <LabelSmall
+                                  color={theme.colors.contentSecondary}
+                                  overrides={{
+                                    Block: {
+                                      style: { fontSize: "10px" },
+                                    },
+                                  }}
+                                >
+                                  #
+                                  {gauge.veBTCTokenId > 0n
+                                    ? gauge.veBTCTokenId.toString()
+                                    : "?"}
+                                </LabelSmall>
+                              )}
+                            </div>
+                            {/* Gauge Info */}
+                            <div
+                              className={css({
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: "2px",
+                                minWidth: 0,
+                              })}
+                            >
+                              <LabelSmall
+                                color={
+                                  profile?.display_name ||
+                                  profile?.description ||
+                                  profile?.profile_picture_url
+                                    ? theme.colors.positive
+                                    : theme.colors.negative
+                                }
+                              >
+                                {profile?.display_name
+                                  ? profile.display_name
+                                  : gauge.veBTCTokenId > 0n
+                                    ? `veBTC #${gauge.veBTCTokenId.toString()}`
+                                    : `${gauge.address.slice(0, 6)}...${gauge.address.slice(-4)}`}
+                              </LabelSmall>
+                              {profile?.description && (
+                                <ParagraphSmall
+                                  color={theme.colors.contentSecondary}
+                                  overrides={{
+                                    Block: {
+                                      style: {
+                                        overflow: "hidden",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
+                                        maxWidth: "200px",
+                                        margin: 0,
+                                      },
+                                    },
+                                  }}
+                                >
+                                  {profile.description}
+                                </ParagraphSmall>
+                              )}
+                            </div>
+                          </Link>
+                        )
+                      }}
+                    </TableBuilderColumn>
+                    <TableBuilderColumn
+                      header={
+                        <SortableHeader column="veBTCWeight">
+                          veBTC Weight
+                        </SortableHeader>
+                      }
+                    >
+                      {(gauge: BoostGauge) =>
+                        gauge.veBTCWeight !== undefined
+                          ? formatUnits(gauge.veBTCWeight, 18).slice(0, 10)
+                          : "-"
+                      }
+                    </TableBuilderColumn>
+                    <TableBuilderColumn
+                      header={
+                        <SortableHeader column="veMEZOWeight">
+                          veMEZO Weight
+                        </SortableHeader>
+                      }
+                    >
+                      {(gauge: BoostGauge) =>
+                        formatUnits(gauge.totalWeight, 18).slice(0, 10)
+                      }
+                    </TableBuilderColumn>
+                    <TableBuilderColumn
+                      header={
+                        <SortableHeader column="boost">Boost</SortableHeader>
+                      }
+                    >
+                      {(gauge: BoostGauge) =>
+                        formatMultiplier(gauge.boostMultiplier)
+                      }
+                    </TableBuilderColumn>
+                    <TableBuilderColumn
+                      header={
+                        <SortableHeader column="bribes">Bribes</SortableHeader>
+                      }
+                    >
+                      {(gauge: BoostGauge) => (
+                        <GaugeBribesCell gaugeAddress={gauge.address} />
+                      )}
+                    </TableBuilderColumn>
+                    <TableBuilderColumn
+                      header={
+                        <SortableHeader column="optimalVeMEZO">
+                          Optimal veMEZO
+                        </SortableHeader>
+                      }
+                    >
+                      {(gauge: BoostGauge) =>
+                        gauge.optimalAdditionalVeMEZO !== undefined
+                          ? formatFixedPoint(gauge.optimalAdditionalVeMEZO)
+                          : "-"
+                      }
+                    </TableBuilderColumn>
+                    <TableBuilderColumn header="Status">
+                      {(gauge: BoostGauge) => (
+                        <Tag
+                          color={gauge.isAlive ? "green" : "red"}
+                          closeable={false}
+                        >
+                          {gauge.isAlive ? "Active" : "Inactive"}
+                        </Tag>
+                      )}
+                    </TableBuilderColumn>
+                  </TableBuilder>
+                </div>
               </div>
-            </div>
-          </Card>
+            </Card>
           </SpringIn>
         )}
       </div>
