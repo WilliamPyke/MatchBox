@@ -34,7 +34,7 @@ import {
   Tag,
 } from "@mezo-org/mezo-clay"
 import Link from "next/link"
-import { useEffect, useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { type Address, formatUnits } from "viem"
 import { useAccount } from "wagmi"
 
@@ -288,19 +288,12 @@ function VeMEZOLockCard({
                 {upcomingAPY !== null && upcomingAPY > 0 && (
                   <>
                     {apy !== null && apy > 0 && (
-                      <span className="text-2xs text-[var(--content-tertiary)]">
+                      <span className="text-[8px] text-[var(--content-tertiary)]">
                         →
                       </span>
                     )}
-                    <span
-                      className={`inline-flex items-center rounded border px-1.5 py-0.5 font-medium ${
-                        apy === null || apy === 0
-                          ? "border-[rgba(var(--positive-rgb),0.3)] bg-[rgba(var(--positive-rgb),0.15)] text-[11px] font-semibold"
-                          : "border-[var(--border)] bg-[var(--surface-secondary)] text-2xs"
-                      } text-[var(--content-secondary)]`}
-                    >
-                      {formatAPY(upcomingAPY)}{" "}
-                      {apy === null || apy === 0 ? "next" : "next"}
+                    <span className="inline-flex items-center rounded-sm border border-[var(--border)] bg-[var(--surface-secondary)] px-1 py-0.5 text-[9px] font-medium text-[var(--content-secondary)]">
+                      {formatAPY(upcomingAPY)}
                     </span>
                   </>
                 )}
@@ -427,100 +420,134 @@ function ClaimableRewardRow({
   }, [bribes])
 
   const hasRewards = rewardsByToken.length > 0
+  const hasPendingRewards = projectedIncentivesUSD > 0
+  const [isExpanded, setIsExpanded] = useState(false)
 
   if (!hasRewards) {
     return null
   }
 
   return (
-    <div
-      className={`flex items-center justify-between gap-4 py-5 max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-4 ${
-        isLast ? "" : "border-b border-[var(--border)]"
-      }`}
-    >
-      {/* Left side: Token ID badge */}
-      <div className="flex min-w-[140px] items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-tertiary)]">
-          <span className="text-xs text-[var(--content-secondary)]">
-            #{tokenId.toString()}
-          </span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-[var(--content-secondary)]">
-            veMEZO
-          </span>
-          {((apy !== null && apy > 0) ||
-            (upcomingAPY !== null && upcomingAPY > 0)) && (
-            <div className="flex items-center gap-1">
-              {apy !== null && apy > 0 && (
-                <span className="inline-flex items-center rounded-sm border border-[rgba(var(--positive-rgb),0.3)] bg-[rgba(var(--positive-rgb),0.15)] px-1 py-0.5 text-[9px] font-semibold text-[var(--positive)]">
-                  {formatAPY(apy)}
-                </span>
-              )}
-              {upcomingAPY !== null && upcomingAPY > 0 && (
-                <>
-                  {apy !== null && apy > 0 && (
-                    <span className="text-[8px] text-[var(--content-tertiary)]">
-                      →
-                    </span>
-                  )}
-                  <span className="inline-flex items-center rounded-sm border border-[var(--border)] bg-[var(--surface-secondary)] px-1 py-0.5 text-[9px] font-medium text-[var(--content-secondary)]">
-                    {formatAPY(upcomingAPY)}
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Center: Claimable + Pending Rewards */}
-      <div className="flex flex-1 flex-wrap items-center justify-center gap-5 max-[600px]:justify-start">
-        {/* Claimable rewards */}
-        {rewardsByToken.map((reward) => (
-          <div key={reward.symbol} className="flex items-center gap-1.5">
-            <TokenIcon symbol={reward.symbol} size={20} />
-            <span className="font-mono text-base font-medium tabular-nums text-[var(--content-primary)]">
-              {formatTokenValue(reward.amount, reward.decimals)}
-            </span>
-            <span className="text-xs text-[var(--content-secondary)]">
-              {reward.symbol}
-            </span>
-          </div>
-        ))}
-        {/* Pending rewards (projected for next epoch) */}
-        {projectedIncentivesUSD > 0 && (
-          <div className="flex items-center gap-1.5 rounded border border-dashed border-[var(--border)] px-2 py-1">
-            <span className="text-2xs uppercase tracking-wider text-[var(--content-tertiary)]">
-              Pending
-            </span>
-            <span className="font-mono text-sm tabular-nums text-[var(--content-secondary)]">
-              ≈ $
-              {projectedIncentivesUSD.toLocaleString(undefined, {
-                maximumFractionDigits: 2,
-              })}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Right side: Claim button */}
-      <Button
-        onClick={onClaim}
-        size="small"
-        kind="secondary"
-        isLoading={isPending || isConfirming}
-        disabled={isPending || isConfirming}
-        overrides={{
-          Root: {
-            style: {
-              minWidth: "100px",
-            },
-          },
-        }}
+    <div>
+      {/* Main row */}
+      <div
+        className={`flex items-center justify-between gap-4 py-5 max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-4 ${
+          isLast && !hasPendingRewards ? "" : "border-b border-[var(--border)]"
+        }`}
       >
-        {isPending ? "Confirm..." : isConfirming ? "Claiming..." : "Claim"}
-      </Button>
+        {/* Left side: Collapsible chevron and Token ID badge */}
+        <div className="flex min-w-[140px] items-center gap-3">
+          {hasPendingRewards ? (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex h-5 w-5 items-center justify-center text-[var(--content-secondary)] hover:text-[var(--content-primary)] transition-all"
+              type="button"
+              aria-label={isExpanded ? "Collapse pending rewards" : "Expand pending rewards"}
+            >
+              <span
+                className={`inline-block text-xs transition-transform duration-200 ${
+                  isExpanded ? "rotate-90" : ""
+                }`}
+              >
+                &gt;
+              </span>
+            </button>
+          ) : (
+            <div className="h-5 w-5" />
+          )}
+          <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-tertiary)]">
+            <span className="text-xs text-[var(--content-secondary)]">
+              #{tokenId.toString()}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-[var(--content-secondary)]">
+              veMEZO
+            </span>
+            {((apy !== null && apy > 0) ||
+              (upcomingAPY !== null && upcomingAPY > 0)) && (
+              <div className="flex items-center gap-1">
+                {apy !== null && apy > 0 && (
+                  <span className="inline-flex items-center rounded-sm border border-[rgba(var(--positive-rgb),0.3)] bg-[rgba(var(--positive-rgb),0.15)] px-1 py-0.5 text-[9px] font-semibold text-[var(--positive)]">
+                    {formatAPY(apy)}
+                  </span>
+                )}
+                {upcomingAPY !== null && upcomingAPY > 0 && (
+                  <>
+                    {apy !== null && apy > 0 && (
+                      <span className="text-[8px] text-[var(--content-tertiary)]">
+                        →
+                      </span>
+                    )}
+                    <span className="inline-flex items-center rounded-sm border border-[var(--border)] bg-[var(--surface-secondary)] px-1 py-0.5 text-[9px] font-medium text-[var(--content-secondary)]">
+                      {formatAPY(upcomingAPY)}
+                    </span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Center: Claimable Rewards */}
+        <div className="flex flex-1 flex-wrap items-center justify-center gap-5 max-[600px]:justify-start">
+          {/* Claimable rewards */}
+          {rewardsByToken.map((reward) => (
+            <div key={reward.symbol} className="flex items-center gap-1.5">
+              <TokenIcon symbol={reward.symbol} size={20} />
+              <span className="font-mono text-base font-medium tabular-nums text-[var(--content-primary)]">
+                {formatTokenValue(reward.amount, reward.decimals)}
+              </span>
+              <span className="text-xs text-[var(--content-secondary)]">
+                {reward.symbol}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        {/* Right side: Claim button */}
+        <Button
+          onClick={onClaim}
+          size="small"
+          kind="secondary"
+          isLoading={isPending || isConfirming}
+          disabled={isPending || isConfirming}
+          overrides={{
+            Root: {
+              style: {
+                minWidth: "100px",
+              },
+            },
+          }}
+        >
+          {isPending ? "Confirm..." : isConfirming ? "Claiming..." : "Claim"}
+        </Button>
+      </div>
+
+      {/* Collapsible pending rewards section */}
+      {hasPendingRewards && isExpanded && (
+        <div
+          className={`border-t border-[var(--border)] bg-[var(--surface-secondary)] px-7 py-4 ${
+            isLast ? "" : "border-b border-[var(--border)]"
+          }`}
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-2xs uppercase tracking-wider text-[var(--content-tertiary)]">
+                Pending Next Epoch
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-base font-medium tabular-nums text-[var(--content-secondary)]">
+                ≈ $
+                {projectedIncentivesUSD.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -558,6 +585,8 @@ function ProjectedRewardRow({
     >
       {/* Left side: Token ID badge */}
       <div className="flex min-w-[140px] items-center gap-3">
+        {/* Placeholder for chevron alignment */}
+        <div className="h-5 w-5" />
         <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-tertiary)]">
           <span className="text-xs text-[var(--content-secondary)]">
             #{tokenId.toString()}
@@ -569,7 +598,7 @@ function ProjectedRewardRow({
           </span>
           {upcomingAPY !== null && upcomingAPY > 0 && (
             <span className="inline-flex items-center rounded-sm border border-[var(--border)] bg-[var(--surface-secondary)] px-1 py-0.5 text-[9px] font-medium text-[var(--content-secondary)]">
-              {formatAPY(upcomingAPY)} next
+              {formatAPY(upcomingAPY)}
             </span>
           )}
         </div>
@@ -813,10 +842,7 @@ export default function DashboardPage(): JSX.Element {
                                         : "border-[var(--border)] bg-[var(--surface-secondary)] text-[11px]"
                                     } text-[var(--content-secondary)]`}
                                   >
-                                    {formatAPY(upcomingAPY)}{" "}
-                                    {totalAPY === null || totalAPY === 0
-                                      ? "next"
-                                      : "next"}
+                                    {formatAPY(upcomingAPY)}
                                   </span>
                                 </>
                               )}
@@ -901,57 +927,83 @@ export default function DashboardPage(): JSX.Element {
                   {/* Reward rows */}
                   {(hasClaimableRewards || hasFutureRewards) && (
                     <div className="px-7 py-1 pb-2">
-                      {/* Claimable rewards section */}
-                      {hasClaimableRewards && (
-                        <>
-                          {Array.from(bribesGroupedByTokenId.entries()).map(
-                            ([tokenIdStr, bribes], index, arr) => (
-                              <ClaimableRewardRow
-                                key={`claimable-${tokenIdStr}`}
-                                tokenId={BigInt(tokenIdStr)}
-                                bribes={bribes}
-                                onClaim={() =>
-                                  handleClaimBribes(BigInt(tokenIdStr))
-                                }
-                                isPending={isClaimPending}
-                                isConfirming={isClaimConfirming}
-                                isLast={
-                                  !hasFutureRewards && index === arr.length - 1
-                                }
-                                claimableUSD={
-                                  claimableUSDByTokenId.get(tokenIdStr) ?? 0
-                                }
-                                allGaugeAddresses={allGaugeAddresses}
-                                apyMap={apyMap}
-                              />
-                            ),
-                          )}
-                        </>
-                      )}
+                      {/* Calculate which tokens have pending rewards but no claimable rewards */}
+                      {(() => {
+                        const tokensWithPendingOnly: Array<{
+                          tokenId: bigint
+                          index: number
+                        }> = []
+                        veMEZOLocks.forEach((lock, index) => {
+                          const tokenIdStr = lock.tokenId.toString()
+                          const hasClaimable = bribesGroupedByTokenId.has(
+                            tokenIdStr,
+                          )
+                          if (!hasClaimable) {
+                            tokensWithPendingOnly.push({
+                              tokenId: lock.tokenId,
+                              index,
+                            })
+                          }
+                        })
 
-                      {/* Projected rewards section */}
-                      {hasFutureRewards && (
-                        <>
-                          {veMEZOLocks.map((lock, index) => {
-                            const tokenIdStr = lock.tokenId.toString()
+                        // Calculate total rows to determine last one
+                        const totalClaimableRows = bribesGroupedByTokenId.size
+                        const totalPendingOnlyRows = tokensWithPendingOnly.length
+                        const totalRows = totalClaimableRows + totalPendingOnlyRows
 
-                            // Skip if this token already has claimable rewards (avoid duplication)
-                            const hasClaimable =
-                              bribesGroupedByTokenId.has(tokenIdStr)
-                            if (hasClaimable) return null
+                        let currentRowIndex = 0
 
-                            return (
-                              <ProjectedRewardRow
-                                key={`projected-${tokenIdStr}`}
-                                tokenId={lock.tokenId}
-                                allGaugeAddresses={allGaugeAddresses}
-                                apyMap={apyMap}
-                                isLast={index === veMEZOLocks.length - 1}
-                              />
-                            )
-                          })}
-                        </>
-                      )}
+                        return (
+                          <>
+                            {/* Claimable rewards section */}
+                            {hasClaimableRewards && (
+                              <>
+                                {Array.from(bribesGroupedByTokenId.entries()).map(
+                                  ([tokenIdStr, bribes]) => {
+                                    currentRowIndex++
+                                    return (
+                                      <ClaimableRewardRow
+                                        key={`claimable-${tokenIdStr}`}
+                                        tokenId={BigInt(tokenIdStr)}
+                                        bribes={bribes}
+                                        onClaim={() =>
+                                          handleClaimBribes(BigInt(tokenIdStr))
+                                        }
+                                        isPending={isClaimPending}
+                                        isConfirming={isClaimConfirming}
+                                        isLast={
+                                          currentRowIndex === totalRows
+                                        }
+                                        claimableUSD={
+                                          claimableUSDByTokenId.get(
+                                            tokenIdStr,
+                                          ) ?? 0
+                                        }
+                                        allGaugeAddresses={allGaugeAddresses}
+                                        apyMap={apyMap}
+                                      />
+                                    )
+                                  },
+                                )}
+                              </>
+                            )}
+
+                            {/* Projected rewards section - only for tokens without claimable rewards */}
+                            {tokensWithPendingOnly.map(({ tokenId }) => {
+                              currentRowIndex++
+                              return (
+                                <ProjectedRewardRow
+                                  key={`projected-${tokenId.toString()}`}
+                                  tokenId={tokenId}
+                                  allGaugeAddresses={allGaugeAddresses}
+                                  apyMap={apyMap}
+                                  isLast={currentRowIndex === totalRows}
+                                />
+                              )
+                            })}
+                          </>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
