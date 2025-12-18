@@ -1,4 +1,5 @@
 import { wagmiConfig } from "@/config/wagmi"
+import { GaugeProfilesProvider } from "@/contexts/GaugeProfilesContext"
 import {
   ThemeProvider,
   getThemeObject,
@@ -29,7 +30,9 @@ export function ClientApp({ Component, pageProps }: ClientAppProps) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <ThemedApp Component={Component} pageProps={pageProps} />
+          <GaugeProfilesProvider>
+            <ThemedApp Component={Component} pageProps={pageProps} />
+          </GaugeProfilesProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </WagmiProvider>
