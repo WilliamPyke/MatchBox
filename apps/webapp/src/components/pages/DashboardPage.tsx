@@ -373,6 +373,7 @@ function ClaimableRewardRow({
   claimableUSD,
   allGaugeAddresses,
   apyMap,
+  btcPrice,
 }: {
   tokenId: bigint
   bribes: ClaimableBribe[]
@@ -383,13 +384,14 @@ function ClaimableRewardRow({
   claimableUSD: number
   allGaugeAddresses: Address[]
   apyMap: Map<string, ReturnType<typeof useGaugeAPY>>
+  btcPrice: number | null
 }): JSX.Element | null {
   const { usedWeight } = useVoteState(tokenId)
   const { apy } = useVotingAPY(claimableUSD, usedWeight)
 
   // Get vote allocations for upcoming APY and projected rewards
   const { allocations } = useVoteAllocations(tokenId, allGaugeAddresses)
-  const { upcomingAPY, projectedIncentivesUSD } = useUpcomingVotingAPY(
+  const { upcomingAPY, projectedIncentivesUSD, projectedRewardsByToken } = useUpcomingVotingAPY(
     allocations,
     apyMap,
     usedWeight,
@@ -399,7 +401,7 @@ function ClaimableRewardRow({
   const rewardsByToken = useMemo(() => {
     const map = new Map<
       string,
-      { symbol: string; decimals: number; amount: bigint }
+      { symbol: string; decimals: number; amount: bigint; tokenAddress: string }
     >()
     for (const bribe of bribes) {
       for (const reward of bribe.rewards) {
@@ -412,6 +414,7 @@ function ClaimableRewardRow({
             symbol: reward.symbol,
             decimals: reward.decimals,
             amount: reward.earned,
+            tokenAddress: reward.tokenAddress,
           })
         }
       }
@@ -431,37 +434,31 @@ function ClaimableRewardRow({
     <div>
       {/* Main row */}
       <div
-        className={`flex items-center justify-between gap-4 py-5 max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-4 ${
-          isLast && !hasPendingRewards ? "" : "border-b border-[var(--border)]"
+        className={`flex items-center justify-between gap-4 py-4 max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-4 ${
+          isLast && !isExpanded ? "" : "border-b border-[var(--border)]"
         }`}
       >
         {/* Left side: Collapsible chevron and Token ID badge */}
-        <div className="flex min-w-[140px] items-center gap-3">
-          {hasPendingRewards ? (
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="flex h-5 w-5 items-center justify-center text-[var(--content-secondary)] hover:text-[var(--content-primary)] transition-all"
-              type="button"
-              aria-label={isExpanded ? "Collapse pending rewards" : "Expand pending rewards"}
-            >
-              <span
-                className={`inline-block text-xs transition-transform duration-200 ${
-                  isExpanded ? "rotate-90" : ""
-                }`}
-              >
-                &gt;
-              </span>
-            </button>
-          ) : (
-            <div className="h-5 w-5" />
-          )}
-          <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-tertiary)]">
-            <span className="text-xs text-[var(--content-secondary)]">
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex min-w-[180px] items-center gap-3 text-left transition-colors hover:opacity-80"
+          type="button"
+          aria-label={isExpanded ? "Collapse details" : "Expand details"}
+        >
+          <span
+            className={`inline-block text-sm text-[var(--content-secondary)] transition-transform duration-200 ${
+              isExpanded ? "rotate-90" : ""
+            }`}
+          >
+            ▸
+          </span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface-tertiary)]">
+            <span className="text-xs font-medium text-[var(--content-secondary)]">
               #{tokenId.toString()}
             </span>
           </div>
           <div className="flex flex-col gap-0.5">
-            <span className="text-xs text-[var(--content-secondary)]">
+            <span className="text-sm font-medium text-[var(--content-primary)]">
               veMEZO
             </span>
             {((apy !== null && apy > 0) ||
@@ -487,27 +484,30 @@ function ClaimableRewardRow({
               </div>
             )}
           </div>
-        </div>
+        </button>
 
-        {/* Center: Claimable Rewards */}
-        <div className="flex flex-1 flex-wrap items-center justify-center gap-5 max-[600px]:justify-start">
-          {/* Claimable rewards */}
-          {rewardsByToken.map((reward) => (
-            <div key={reward.symbol} className="flex items-center gap-1.5">
-              <TokenIcon symbol={reward.symbol} size={20} />
-              <span className="font-mono text-base font-medium tabular-nums text-[var(--content-primary)]">
-                {formatTokenValue(reward.amount, reward.decimals)}
-              </span>
-              <span className="text-xs text-[var(--content-secondary)]">
-                {reward.symbol}
-              </span>
-            </div>
-          ))}
+        {/* Center: Total USD Value (collapsed) or asset icons */}
+        <div className="flex flex-1 items-center justify-center gap-3 max-[600px]:justify-start">
+          {/* Show stacked token icons as preview */}
+          <div className="flex items-center -space-x-1">
+            {rewardsByToken.slice(0, 3).map((reward) => (
+              <div key={reward.symbol} className="rounded-full border-2 border-[var(--surface)] bg-[var(--surface)]">
+                <TokenIcon symbol={reward.symbol} size={20} />
+              </div>
+            ))}
+          </div>
+          {/* Show total USD */}
+          <span className="font-mono text-lg font-semibold tabular-nums text-[var(--content-primary)]">
+            ${claimableUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </span>
         </div>
 
         {/* Right side: Claim button */}
         <Button
-          onClick={onClaim}
+          onClick={(e) => {
+            e.stopPropagation()
+            onClaim()
+          }}
           size="small"
           kind="secondary"
           isLoading={isPending || isConfirming}
@@ -524,43 +524,85 @@ function ClaimableRewardRow({
         </Button>
       </div>
 
-      {/* Collapsible pending rewards section */}
-      {hasPendingRewards && isExpanded && (
+      {/* Collapsible details section */}
+      {isExpanded && (
         <div
-          className={`border-t border-[var(--border)] bg-[var(--surface-secondary)] px-7 py-4 ${
+          className={`bg-[var(--surface-secondary)] px-6 py-4 ${
             isLast ? "" : "border-b border-[var(--border)]"
           }`}
         >
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xs uppercase tracking-wider text-[var(--content-tertiary)]">
-                Pending Next Epoch
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="font-mono text-base font-medium tabular-nums text-[var(--content-secondary)]">
-                ≈ $
-                {projectedIncentivesUSD.toLocaleString(undefined, {
-                  maximumFractionDigits: 2,
-                })}
-              </span>
-              <Button
-                size="small"
-                kind="secondary"
-                disabled
-                overrides={{
-                  Root: {
-                    style: {
-                      minWidth: "100px",
-                      opacity: 0.5,
-                    },
-                  },
-                }}
-              >
-                Pending
-              </Button>
+          {/* Claimable rewards breakdown */}
+          <div className={hasPendingRewards ? "mb-4" : ""}>
+            <span className="mb-3 block text-2xs uppercase tracking-wider text-[var(--content-tertiary)]">
+              Claimable Rewards
+            </span>
+            <div className="flex flex-col gap-2">
+              {rewardsByToken.map((reward) => {
+                const tokenAmount = Number(reward.amount) / Math.pow(10, reward.decimals)
+                const isMezo = reward.tokenAddress.toLowerCase() === MEZO_TOKEN_ADDRESS
+                const price = isMezo ? MEZO_PRICE : (btcPrice ?? 0)
+                const usdValue = tokenAmount * price
+                
+                return (
+                  <div
+                    key={reward.symbol}
+                    className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <TokenIcon symbol={reward.symbol} size={24} />
+                      <span className="text-sm font-medium text-[var(--content-primary)]">
+                        {reward.symbol}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="font-mono text-sm font-medium tabular-nums text-[var(--content-primary)]">
+                        {formatTokenValue(reward.amount, reward.decimals)}
+                      </span>
+                      {usdValue > 0 && (
+                        <span className="text-xs text-[var(--content-tertiary)]">
+                          ≈ ${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
+          
+          {/* Pending rewards section */}
+          {hasPendingRewards && projectedRewardsByToken.length > 0 && (
+            <div>
+              <span className="mb-3 block text-2xs uppercase tracking-wider text-[var(--content-tertiary)]">
+                Pending Rewards
+              </span>
+              <div className="flex flex-col gap-2">
+                {projectedRewardsByToken.map((reward) => (
+                  <div
+                    key={reward.tokenAddress}
+                    className="flex items-center justify-between rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-3 opacity-75"
+                  >
+                    <div className="flex items-center gap-3">
+                      <TokenIcon symbol={reward.symbol} size={24} />
+                      <span className="text-sm font-medium text-[var(--content-secondary)]">
+                        {reward.symbol}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="font-mono text-sm font-medium tabular-nums text-[var(--content-secondary)]">
+                        ≈ {formatTokenValue(reward.amount, reward.decimals)}
+                      </span>
+                      {reward.usdValue > 0 && (
+                        <span className="text-xs text-[var(--content-tertiary)]">
+                          ≈ ${reward.usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -580,9 +622,10 @@ function ProjectedRewardRow({
 }): JSX.Element | null {
   const { usedWeight } = useVoteState(tokenId)
   const { allocations } = useVoteAllocations(tokenId, allGaugeAddresses)
+  const [isExpanded, setIsExpanded] = useState(false)
 
   // Calculate projected rewards and APY for this specific token
-  const { upcomingAPY, projectedIncentivesUSD } = useUpcomingVotingAPY(
+  const { upcomingAPY, projectedIncentivesUSD, projectedRewardsByToken } = useUpcomingVotingAPY(
     allocations,
     apyMap,
     usedWeight,
@@ -593,58 +636,116 @@ function ProjectedRewardRow({
   }
 
   return (
-    <div
-      className={`flex items-center justify-between gap-4 py-5 max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-4 ${
-        isLast ? "" : "border-b border-[var(--border)]"
-      }`}
-    >
-      {/* Left side: Token ID badge */}
-      <div className="flex min-w-[140px] items-center gap-3">
-        {/* Placeholder for chevron alignment */}
-        <div className="h-5 w-5" />
-        <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--surface-tertiary)]">
-          <span className="text-xs text-[var(--content-secondary)]">
-            #{tokenId.toString()}
-          </span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <span className="text-xs text-[var(--content-secondary)]">
-            veMEZO
-          </span>
-          {upcomingAPY !== null && upcomingAPY > 0 && (
-            <span className="inline-flex items-center rounded-sm border border-[var(--border)] bg-[var(--surface-secondary)] px-1 py-0.5 text-[9px] font-medium text-[var(--content-secondary)]">
-              {formatAPY(upcomingAPY)}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Center: Projected USD Value */}
-      <div className="flex flex-1 items-center justify-center gap-3 max-[600px]:justify-start">
-        <span className="font-mono text-base font-medium tabular-nums text-[var(--content-secondary)]">
-          ≈ $
-          {projectedIncentivesUSD.toLocaleString(undefined, {
-            maximumFractionDigits: 2,
-          })}
-        </span>
-      </div>
-
-      {/* Right side: Disabled Claim button */}
-      <Button
-        size="small"
-        kind="secondary"
-        disabled
-        overrides={{
-          Root: {
-            style: {
-              minWidth: "100px",
-              opacity: 0.5,
-            },
-          },
-        }}
+    <div>
+      <div
+        className={`flex items-center justify-between gap-4 py-4 max-[600px]:flex-col max-[600px]:items-stretch max-[600px]:gap-4 ${
+          isLast && !isExpanded ? "" : "border-b border-[var(--border)]"
+        }`}
       >
-        Pending
-      </Button>
+        {/* Left side: Collapsible chevron and Token ID badge */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex min-w-[180px] items-center gap-3 text-left transition-colors hover:opacity-80"
+          type="button"
+          aria-label={isExpanded ? "Collapse details" : "Expand details"}
+        >
+          <span
+            className={`inline-block text-sm text-[var(--content-secondary)] transition-transform duration-200 ${
+              isExpanded ? "rotate-90" : ""
+            }`}
+          >
+            ▸
+          </span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-dashed border-[var(--border)] bg-[var(--surface-tertiary)]">
+            <span className="text-xs font-medium text-[var(--content-secondary)]">
+              #{tokenId.toString()}
+            </span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium text-[var(--content-secondary)]">
+              veMEZO
+            </span>
+            {upcomingAPY !== null && upcomingAPY > 0 && (
+              <span className="inline-flex items-center rounded-sm border border-[var(--border)] bg-[var(--surface-secondary)] px-1 py-0.5 text-[9px] font-medium text-[var(--content-secondary)]">
+                {formatAPY(upcomingAPY)}
+              </span>
+            )}
+          </div>
+        </button>
+
+        {/* Center: Total USD Value with token icons */}
+        <div className="flex flex-1 items-center justify-center gap-3 max-[600px]:justify-start">
+          {/* Show stacked token icons as preview */}
+          <div className="flex items-center -space-x-1">
+            {projectedRewardsByToken.slice(0, 3).map((reward) => (
+              <div key={reward.tokenAddress} className="rounded-full border-2 border-[var(--surface)] bg-[var(--surface)] opacity-60">
+                <TokenIcon symbol={reward.symbol} size={20} />
+              </div>
+            ))}
+          </div>
+          <span className="font-mono text-lg font-semibold tabular-nums text-[var(--content-secondary)]">
+            ≈ ${projectedIncentivesUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </span>
+        </div>
+
+        {/* Right side: Disabled Claim button */}
+        <Button
+          size="small"
+          kind="secondary"
+          disabled
+          overrides={{
+            Root: {
+              style: {
+                minWidth: "100px",
+                opacity: 0.5,
+              },
+            },
+          }}
+        >
+          Pending
+        </Button>
+      </div>
+
+      {/* Collapsible details section */}
+      {isExpanded && (
+        <div
+          className={`bg-[var(--surface-secondary)] px-6 py-4 ${
+            isLast ? "" : "border-b border-[var(--border)]"
+          }`}
+        >
+          {/* Pending rewards breakdown */}
+          <div>
+            <span className="mb-3 block text-2xs uppercase tracking-wider text-[var(--content-tertiary)]">
+              Pending Rewards
+            </span>
+            <div className="flex flex-col gap-2">
+              {projectedRewardsByToken.map((reward) => (
+                <div
+                  key={reward.tokenAddress}
+                  className="flex items-center justify-between rounded-lg border border-dashed border-[var(--border)] bg-[var(--surface)] px-4 py-3 opacity-75"
+                >
+                  <div className="flex items-center gap-3">
+                    <TokenIcon symbol={reward.symbol} size={24} />
+                    <span className="text-sm font-medium text-[var(--content-secondary)]">
+                      {reward.symbol}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="font-mono text-sm font-medium tabular-nums text-[var(--content-secondary)]">
+                      ≈ {formatTokenValue(reward.amount, reward.decimals)}
+                    </span>
+                    {reward.usdValue > 0 && (
+                      <span className="text-xs text-[var(--content-tertiary)]">
+                        ≈ ${reward.usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -826,36 +927,32 @@ export default function DashboardPage(): JSX.Element {
               <SpringIn delay={0} variant="card">
                 <div className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
                   {/* Header with total rewards */}
-                  <div className="border-b border-[var(--border)] bg-[var(--surface)] px-7 py-6">
+                  <div className="border-b border-[var(--border)] bg-gradient-to-br from-[var(--surface)] to-[var(--surface-secondary)] px-7 py-6">
                     <div className="flex items-start justify-between gap-6 max-[600px]:flex-col max-[600px]:gap-5">
-                      <div>
-                        <div className="mb-2 flex items-center gap-3">
-                          <p className="text-2xs uppercase tracking-wider text-[var(--content-secondary)]">
+                      <div className="flex-1">
+                        <div className="mb-4 flex items-center gap-3">
+                          <p className="text-2xs font-medium uppercase tracking-wider text-[var(--content-secondary)]">
                             Total Claimable
                           </p>
                           {((totalAPY !== null && totalAPY > 0) ||
                             (upcomingAPY !== null && upcomingAPY > 0)) && (
                             <div className="inline-flex items-center gap-1.5">
-                              {/* Current APY badge */}
                               {totalAPY !== null && totalAPY > 0 && (
-                                <span className="inline-flex items-center rounded border border-[rgba(var(--positive-rgb),0.4)] bg-[rgba(var(--positive-rgb),0.2)] px-2 py-0.5 text-xs font-semibold text-[var(--positive)]">
+                                <span className="inline-flex items-center rounded-full border border-[rgba(var(--positive-rgb),0.4)] bg-[rgba(var(--positive-rgb),0.15)] px-2.5 py-1 text-xs font-semibold text-[var(--positive)]">
                                   {formatAPY(totalAPY)} APY
                                 </span>
                               )}
-                              {/* Arrow and upcoming APY - show arrow only if there's both current and upcoming */}
                               {upcomingAPY !== null && upcomingAPY > 0 && (
                                 <>
                                   {totalAPY !== null && totalAPY > 0 && (
-                                    <span className="text-xs text-[var(--content-tertiary)]">
-                                      →
-                                    </span>
+                                    <span className="text-xs text-[var(--content-tertiary)]">→</span>
                                   )}
                                   <span
-                                    className={`inline-flex items-center rounded border px-2 py-0.5 font-medium ${
+                                    className={`inline-flex items-center rounded-full border px-2.5 py-1 font-medium ${
                                       totalAPY === null || totalAPY === 0
-                                        ? "border-[rgba(var(--positive-rgb),0.4)] bg-[rgba(var(--positive-rgb),0.2)] text-xs font-semibold"
-                                        : "border-[var(--border)] bg-[var(--surface-secondary)] text-[11px]"
-                                    } text-[var(--content-secondary)]`}
+                                        ? "border-[rgba(var(--positive-rgb),0.4)] bg-[rgba(var(--positive-rgb),0.15)] text-xs font-semibold text-[var(--positive)]"
+                                        : "border-[var(--border)] bg-[var(--surface)] text-[11px] text-[var(--content-secondary)]"
+                                    }`}
                                   >
                                     {formatAPY(upcomingAPY)}
                                   </span>
@@ -864,60 +961,63 @@ export default function DashboardPage(): JSX.Element {
                             </div>
                           )}
                         </div>
-                        {/* Current claimable rewards */}
+                        
+                        {/* Total USD Value - prominent display */}
+                        {hasClaimableRewards && totalClaimableUSD > 0 && (
+                          <div className="mb-5">
+                            <span className="font-mono text-4xl font-bold tabular-nums text-[var(--content-primary)]">
+                              ${totalClaimableUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        )}
+                        
+                        {/* Asset breakdown */}
                         {hasClaimableRewards && (
-                          <>
-                            <div className="flex flex-wrap items-baseline gap-4">
-                              {Array.from(totalClaimable.entries()).map(
-                                ([tokenAddr, info]) => (
+                          <div className="flex flex-wrap gap-3">
+                            {Array.from(totalClaimable.entries()).map(
+                              ([tokenAddr, info]) => {
+                                const tokenAmount = Number(info.amount) / Math.pow(10, info.decimals)
+                                const isMezo = tokenAddr.toLowerCase() === MEZO_TOKEN_ADDRESS
+                                const price = isMezo ? MEZO_PRICE : (btcPrice ?? 0)
+                                const usdValue = tokenAmount * price
+                                
+                                return (
                                   <div
                                     key={tokenAddr}
-                                    className="flex items-center gap-2.5"
+                                    className="flex items-center gap-2.5 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
                                   >
-                                    <TokenIcon symbol={info.symbol} size={28} />
-                                    <span className="font-mono text-3xl font-semibold tabular-nums text-[var(--content-primary)]">
-                                      {formatTokenValue(
-                                        info.amount,
-                                        info.decimals,
+                                    <TokenIcon symbol={info.symbol} size={24} />
+                                    <div className="flex flex-col">
+                                      <div className="flex items-baseline gap-1.5">
+                                        <span className="font-mono text-base font-semibold tabular-nums text-[var(--content-primary)]">
+                                          {formatTokenValue(info.amount, info.decimals)}
+                                        </span>
+                                        <span className="text-xs text-[var(--content-secondary)]">
+                                          {info.symbol}
+                                        </span>
+                                      </div>
+                                      {usdValue > 0 && (
+                                        <span className="text-xs text-[var(--content-tertiary)]">
+                                          ${usdValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                                        </span>
                                       )}
-                                    </span>
-                                    <span className="text-sm text-[var(--content-secondary)]">
-                                      {info.symbol}
-                                    </span>
+                                    </div>
                                   </div>
-                                ),
-                              )}
-                            </div>
-                            {totalClaimableUSD > 0 && (
-                              <p className="mt-2 text-xs text-[var(--content-secondary)]">
-                                ≈ $
-                                {totalClaimableUSD.toLocaleString(undefined, {
-                                  maximumFractionDigits: 2,
-                                })}
-                              </p>
+                                )
+                              },
                             )}
-                          </>
+                          </div>
                         )}
 
                         {/* Projected future rewards */}
                         {hasFutureRewards && (
-                          <div
-                            className={
-                              hasClaimableRewards
-                                ? "mt-4 border-t border-[var(--border)] pt-4"
-                                : ""
-                            }
-                          >
-                            <p className="mb-2 text-2xs uppercase tracking-wider text-[var(--content-secondary)]">
-                              Projected Next Epoch
-                            </p>
-                            <div className="flex items-center gap-2">
-                              <span className="font-mono text-xl font-semibold tabular-nums text-[var(--content-secondary)]">
-                                ≈ $
-                                {projectedIncentivesUSD.toLocaleString(
-                                  undefined,
-                                  { maximumFractionDigits: 2 },
-                                )}
+                          <div className={hasClaimableRewards ? "mt-5 border-t border-[var(--border)] pt-5" : ""}>
+                            <div className="flex items-center gap-3">
+                              <p className="text-2xs font-medium uppercase tracking-wider text-[var(--content-tertiary)]">
+                                Pending Rewards
+                              </p>
+                              <span className="font-mono text-lg font-semibold tabular-nums text-[var(--content-secondary)]">
+                                +${projectedIncentivesUSD.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                               </span>
                             </div>
                           </div>
@@ -925,13 +1025,11 @@ export default function DashboardPage(): JSX.Element {
                       </div>
 
                       {hasClaimableRewards && (
-                        <div className="flex items-center gap-2 rounded-full border border-[rgba(var(--positive-rgb),0.3)] bg-[rgba(var(--positive-rgb),0.15)] px-3.5 py-2">
-                          <div className="h-2 w-2 rounded-full bg-[var(--positive)] shadow-[0_0_8px_var(--positive)]" />
-                          <span className="text-xs text-[var(--positive)]">
+                        <div className="flex items-center gap-2 self-start rounded-full border border-[rgba(var(--positive-rgb),0.3)] bg-[rgba(var(--positive-rgb),0.1)] px-4 py-2">
+                          <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-[var(--positive)] shadow-[0_0_10px_var(--positive)]" />
+                          <span className="text-sm font-medium text-[var(--positive)]">
                             {bribesGroupedByTokenId.size}{" "}
-                            {bribesGroupedByTokenId.size === 1
-                              ? "position"
-                              : "positions"}{" "}
+                            {bribesGroupedByTokenId.size === 1 ? "position" : "positions"}{" "}
                             ready
                           </span>
                         </div>
@@ -996,6 +1094,7 @@ export default function DashboardPage(): JSX.Element {
                                         }
                                         allGaugeAddresses={allGaugeAddresses}
                                         apyMap={apyMap}
+                                        btcPrice={btcPrice}
                                       />
                                     )
                                   },

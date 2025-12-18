@@ -20,12 +20,21 @@ function getEpochStart(timestamp: number): bigint {
   return BigInt(Math.floor(timestamp / EPOCH_DURATION) * EPOCH_DURATION)
 }
 
+export type TokenIncentive = {
+  tokenAddress: string
+  symbol: string
+  amount: bigint
+  decimals: number
+  usdValue: number
+}
+
 export type GaugeAPYData = {
   gaugeAddress: Address
   apy: number | null
   totalIncentivesUSD: number
   totalVeMEZOWeight: bigint
   isLoading: boolean
+  incentivesByToken: TokenIncentive[]
 }
 
 /**
@@ -397,11 +406,14 @@ export function useGaugesAPY(
         totalIncentivesUSD: 0,
         totalVeMEZOWeight: gauge.totalWeight,
         isLoading: false,
+        incentivesByToken: [],
       })
     })
 
-    // Calculate incentives per gauge
+    // Calculate incentives per gauge (both total USD and by token)
     const gaugeIncentives = new Map<string, number>()
+    const gaugeTokenIncentives = new Map<string, TokenIncentive[]>()
+    
     rewardTokenQueries.forEach((query, i) => {
       const tokenAddress = rewardTokensData?.[i]?.result as Address | undefined
       const amount = tokenRewardsData?.[i * 2]?.result as bigint | undefined
@@ -422,6 +434,25 @@ export function useGaugesAPY(
         const gaugeKey = query.gaugeAddress.toLowerCase()
         const current = gaugeIncentives.get(gaugeKey) ?? 0
         gaugeIncentives.set(gaugeKey, current + usdValue)
+        
+        // Track by token
+        const existingTokens = gaugeTokenIncentives.get(gaugeKey) ?? []
+        const existingTokenIndex = existingTokens.findIndex(
+          (t) => t.tokenAddress === tokenKey
+        )
+        if (existingTokenIndex >= 0) {
+          existingTokens[existingTokenIndex].amount += amount
+          existingTokens[existingTokenIndex].usdValue += usdValue
+        } else {
+          existingTokens.push({
+            tokenAddress: tokenKey,
+            symbol: isMezo ? "MEZO" : "BTC",
+            amount,
+            decimals: decimals ?? 18,
+            usdValue,
+          })
+        }
+        gaugeTokenIncentives.set(gaugeKey, existingTokens)
       }
     })
 
@@ -430,6 +461,7 @@ export function useGaugesAPY(
       const gaugeKey = gauge.address.toLowerCase()
       const totalIncentivesUSD = gaugeIncentives.get(gaugeKey) ?? 0
       const totalWeight = gauge.totalWeight
+      const incentivesByToken = gaugeTokenIncentives.get(gaugeKey) ?? []
 
       let apy: number | null = null
       if (totalWeight && totalWeight > 0n && totalIncentivesUSD > 0) {
@@ -449,6 +481,7 @@ export function useGaugesAPY(
         totalIncentivesUSD,
         totalVeMEZOWeight: totalWeight,
         isLoading: false,
+        incentivesByToken,
       })
     })
 
@@ -514,6 +547,14 @@ export type VoteAllocation = {
   weight: bigint
 }
 
+export type ProjectedTokenReward = {
+  tokenAddress: string
+  symbol: string
+  amount: bigint
+  decimals: number
+  usdValue: number
+}
+
 /**
  * Calculate upcoming/projected APY based on user's vote proportion vs total votes
  * This shows what the user will earn next epoch based on their current vote allocations.
@@ -529,14 +570,15 @@ export function useUpcomingVotingAPY(
   voteAllocations: VoteAllocation[],
   apyMap: Map<string, GaugeAPYData>,
   usedWeight: bigint | undefined,
-): { upcomingAPY: number | null; projectedIncentivesUSD: number } {
+): { upcomingAPY: number | null; projectedIncentivesUSD: number; projectedRewardsByToken: ProjectedTokenReward[] } {
   const result = useMemo(() => {
     if (!usedWeight || usedWeight === 0n || voteAllocations.length === 0) {
-      return { upcomingAPY: null, projectedIncentivesUSD: 0 }
+      return { upcomingAPY: null, projectedIncentivesUSD: 0, projectedRewardsByToken: [] }
     }
 
     // Calculate user's proportional share of incentives across all voted gauges
     let totalUserIncentivesUSD = 0
+    const tokenRewardsMap = new Map<string, ProjectedTokenReward>()
 
     for (const allocation of voteAllocations) {
       const gaugeKey = allocation.gaugeAddress.toLowerCase()
@@ -552,21 +594,46 @@ export function useUpcomingVotingAPY(
           Number(allocation.weight) / Number(gaugeData.totalVeMEZOWeight)
         const userIncentivesFromGauge = gaugeData.totalIncentivesUSD * userShare
         totalUserIncentivesUSD += userIncentivesFromGauge
+        
+        // Calculate user's share of each token from this gauge
+        for (const tokenIncentive of gaugeData.incentivesByToken) {
+          const userTokenAmount = BigInt(
+            Math.floor(Number(tokenIncentive.amount) * userShare)
+          )
+          const userTokenUSD = tokenIncentive.usdValue * userShare
+          
+          const existing = tokenRewardsMap.get(tokenIncentive.tokenAddress)
+          if (existing) {
+            existing.amount += userTokenAmount
+            existing.usdValue += userTokenUSD
+          } else {
+            tokenRewardsMap.set(tokenIncentive.tokenAddress, {
+              tokenAddress: tokenIncentive.tokenAddress,
+              symbol: tokenIncentive.symbol,
+              amount: userTokenAmount,
+              decimals: tokenIncentive.decimals,
+              usdValue: userTokenUSD,
+            })
+          }
+        }
       }
     }
 
     if (totalUserIncentivesUSD === 0) {
-      return { upcomingAPY: null, projectedIncentivesUSD: 0 }
+      return { upcomingAPY: null, projectedIncentivesUSD: 0, projectedRewardsByToken: [] }
     }
 
     // Convert used veMEZO weight to USD value
     const usedVeMEZOAmount = Number(usedWeight) / 1e18
     const usedVeMEZOValueUSD = usedVeMEZOAmount * MEZO_PRICE
 
+    const projectedRewardsByToken = Array.from(tokenRewardsMap.values())
+
     if (usedVeMEZOValueUSD === 0) {
       return {
         upcomingAPY: null,
         projectedIncentivesUSD: totalUserIncentivesUSD,
+        projectedRewardsByToken,
       }
     }
 
@@ -578,6 +645,7 @@ export function useUpcomingVotingAPY(
     return {
       upcomingAPY: apyPercent,
       projectedIncentivesUSD: totalUserIncentivesUSD,
+      projectedRewardsByToken,
     }
   }, [voteAllocations, apyMap, usedWeight])
 
