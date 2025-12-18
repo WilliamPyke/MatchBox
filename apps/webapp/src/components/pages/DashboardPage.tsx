@@ -306,7 +306,7 @@ function VeMEZOLockCard({
                 )}
               </div>
             ) : (
-              <div className="mt-1 h-[28px]" />
+              <div className="mt-1 h-[30px]" />
             )}
           </div>
           <Tag
