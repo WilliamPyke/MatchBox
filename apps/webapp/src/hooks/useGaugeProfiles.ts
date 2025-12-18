@@ -1,10 +1,10 @@
-import type { GaugeProfile } from "@/config/supabase"
+import type { GaugeHistory, GaugeProfile, SocialLinks } from "@/config/supabase"
 import { supabase } from "@/config/supabase"
 import {
   useAllGaugeProfilesFromContext,
   useGaugeProfileFromContext,
 } from "@/contexts/GaugeProfilesContext"
-import { useCallback, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import type { Address } from "viem"
 
 /**
@@ -56,13 +56,18 @@ export function useAllGaugeProfiles() {
   return { profiles, isLoading, refetch }
 }
 
-type UpsertGaugeProfileParams = {
+export type UpsertGaugeProfileParams = {
   gaugeAddress: Address
   veBTCTokenId: bigint
   ownerAddress: Address
   profilePictureUrl?: string | null
   description?: string | null
   displayName?: string | null
+  websiteUrl?: string | null
+  socialLinks?: SocialLinks | null
+  incentiveStrategy?: string | null
+  votingStrategy?: string | null
+  tags?: string[] | null
 }
 
 export function useUpsertGaugeProfile() {
@@ -78,6 +83,11 @@ export function useUpsertGaugeProfile() {
       profilePictureUrl,
       description,
       displayName,
+      websiteUrl,
+      socialLinks,
+      incentiveStrategy,
+      votingStrategy,
+      tags,
     }: UpsertGaugeProfileParams) => {
       setIsLoading(true)
       setError(null)
@@ -92,6 +102,11 @@ export function useUpsertGaugeProfile() {
             profile_picture_url: profilePictureUrl,
             description,
             display_name: displayName,
+            website_url: websiteUrl,
+            social_links: socialLinks,
+            incentive_strategy: incentiveStrategy,
+            voting_strategy: votingStrategy,
+            tags,
           },
           {
             onConflict: "gauge_address",
@@ -120,6 +135,58 @@ export function useUpsertGaugeProfile() {
     upsertProfile,
     isLoading,
     error,
+  }
+}
+
+/**
+ * Fetch historical data for a gauge.
+ * Returns up to the last N epochs of data for charts and trends.
+ */
+export function useGaugeHistory(
+  gaugeAddress: Address | undefined,
+  epochCount = 12,
+) {
+  const [history, setHistory] = useState<GaugeHistory[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const fetchHistory = useCallback(async () => {
+    if (!gaugeAddress) {
+      setHistory([])
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    const { data, error: fetchError } = await supabase
+      .from("gauge_history")
+      .select("*")
+      .eq("gauge_address", gaugeAddress.toLowerCase())
+      .order("epoch_start", { ascending: false })
+      .limit(epochCount)
+
+    if (fetchError) {
+      console.error("Error fetching gauge history:", fetchError)
+      setError(new Error(fetchError.message))
+      setHistory([])
+    } else {
+      // Reverse to show oldest first for charts
+      setHistory((data as unknown as GaugeHistory[])?.reverse() ?? [])
+    }
+
+    setIsLoading(false)
+  }, [gaugeAddress, epochCount])
+
+  useEffect(() => {
+    fetchHistory()
+  }, [fetchHistory])
+
+  return {
+    history,
+    isLoading,
+    error,
+    refetch: fetchHistory,
   }
 }
 

@@ -167,9 +167,9 @@ export default function HomePage(): JSX.Element {
           <SpringIn delay={2} variant="card">
             <ActionCard
               title="veBTC Holders"
-              command="add --incentives"
-              description="Add incentives to your gauge to attract veMEZO votes and boost your voting power."
-              buttonText="Add Incentives"
+              command="gauge --manage"
+              description="Manage your gauge profile, add incentives, and set your strategy to attract veMEZO votes."
+              buttonText="Manage Gauge"
               href="/incentives"
               accentColor="#F7931A"
             />
